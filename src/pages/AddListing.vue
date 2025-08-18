@@ -14,6 +14,10 @@
       <q-input v-model="title" label="Title" filled />
       <q-input v-model="description" label="Description" filled type="textarea" />
       <q-input v-model.number="price" label="Price" type="number" filled />
+      <q-input v-model="category" label="Category" filled />
+      <q-input v-model="location" label="Location" filled />
+      <!-- <q-input v-model="condition" label="Condition" filled />-->
+      <!-- <q-input v-model="status" label="Status" filled /> -->
 
       <q-btn label="Add Listing" color="secondary" class="full-width" @click="addListing" />
     </div>
@@ -44,9 +48,13 @@ const listings = ref([])
 const title = ref("")
 const description = ref("")
 const price = ref(null)
+const category = ref("")
+const location = ref ("")
+//const condition = ref("")
+//const status = ref("")
 
 async function addListing() {
-  if (!title.value || !description.value || !price.value) {
+  if (!title.value || !description.value || !price.value || !category.value || !location.value ) { // || !condition.value || !status.value) {
     message.value = "Please fill out all fields"
     return
   }
@@ -55,18 +63,30 @@ async function addListing() {
     await axios.post(`${API_URL}listings`, {
       title: title.value,
       description: description.value,
-      price: price.value
+      price: price.value,
+      category: category.value,
+      location: location.value,
+      //condition: condition.value,
+      //status: status.value
     })
     message.value = "Listing added!"
     listings.value.push({
       title: title.value,
       description: description.value,
-      price: price.value
+      price: price.value,
+      category: category.value,
+      location: location.value,
+      //condition: condition.value,
+      //status: status.value
     })
     // reset form
     title.value = ""
     description.value = ""
     price.value = null
+    category.value = ""
+    location.value = ""
+    //condition.value = ""
+    //status.value = ""
   } catch (e) {
     message.value = "Error adding listing: " + e.message
   }
