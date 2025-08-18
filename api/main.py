@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from .database import get_db_cursor
+
 app = FastAPI()
 
 app.add_middleware(
@@ -20,6 +22,10 @@ listings = []
 
 @app.post("/listings")
 def create_listing(listing: Listing):
+    with get_db_cursor() as cursor:
+        cursor.execute("SELECT * FROM listings")
+        results = cursor.fetchall()
+        print(results)
     new_listing = listing.dict()
     new_listing["id"] = len(listings) + 1
     listings.append(new_listing)
