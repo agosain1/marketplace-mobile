@@ -39,12 +39,19 @@
 </template>
 
 <script setup>
-import { ref } from "vue"
+import { ref, onMounted } from "vue"
 import { useRouter } from "vue-router"
 import axios from "axios"
 import { API_URL } from '../../constants.js'
 
 const router = useRouter()
+
+// Check authentication on mount
+onMounted(() => {
+  if (!localStorage.getItem('auth_token')) {
+    router.push('/login')
+  }
+})
 
 // state
 const message = ref("")
@@ -63,16 +70,38 @@ async function addListing() {
     return
   }
 
+  // Get user info from localStorage
+  const userStr = localStorage.getItem('user')
+  if (!userStr) {
+    message.value = "Please log in to add a listing"
+    router.push('/login')
+    return
+  }
+
+  let user
   try {
-    await axios.post(`${API_URL}listings`, {
+    user = JSON.parse(userStr)
+  } catch (e) {
+    message.value = "Invalid user data. Please log in again. " + e
+    router.push('/login')
+    return
+  }
+
+  try {
+    const listingData = {
       title: title.value,
       description: description.value,
       price: price.value,
       category: category.value,
       location: location.value,
+      seller_id: user.id,
       //condition: condition.value,
       //status: status.value
-    })
+    }
+    console.log('Sending listing data:', listingData)
+    console.log('User object:', user)
+    
+    await axios.post(`${API_URL}listings`, listingData)
     message.value = "Listing added!"
     listings.value.push({
       title: title.value,

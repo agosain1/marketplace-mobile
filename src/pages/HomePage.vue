@@ -4,7 +4,8 @@
       <q-toolbar>
         <q-btn flat dense round icon="menu" @click="leftDrawerOpen = !leftDrawerOpen" />
         <q-toolbar-title>My Marketplace</q-toolbar-title>
-        <q-btn flat @click="goToLogin"> Login </q-btn>
+        <q-btn v-if="!isLoggedIn" flat @click="goToLogin"> Login </q-btn>
+        <q-btn v-else flat dense round icon="account_circle" @click="goToAccount" />
         <q-btn flat dense round icon="add" @click="goToAddListing" />
       </q-toolbar>
     </q-header>
@@ -61,6 +62,11 @@ export default {
       listings: [],
     }
   },
+  computed: {
+    isLoggedIn() {
+      return !!localStorage.getItem('auth_token')
+    }
+  },
   methods: {
     async getListings() {
       try {
@@ -71,10 +77,17 @@ export default {
       }
     },
     goToAddListing() {
-      this.$router.push("/add")
+      if (this.isLoggedIn) {
+        this.$router.push("/add")
+      } else {
+        this.$router.push("/login")
+      }
     },
     goToLogin() {
       this.$router.push('/login')
+    },
+    goToAccount() {
+      this.$router.push('/account')
     },
     goHome() {
       this.$router.push('/')
