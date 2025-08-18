@@ -1,8 +1,13 @@
 from pydantic import BaseModel
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends, Header
 import bcrypt
 import jwt
 import datetime
+from typing import Optional
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 from api.database import get_db_cursor
 
@@ -11,9 +16,8 @@ router = APIRouter(
     tags=["auth"]
 )
 
-# JWT Secret (in production, use environment variable)
-JWT_SECRET = "your-secret-key-here"
-JWT_ALGORITHM = "HS256"
+JWT_SECRET = os.getenv("JWT_SECRET_KEY")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
 
 class Login(BaseModel):
     email: str
@@ -41,6 +45,29 @@ def create_jwt_token(user_id: int, email: str) -> str:
         'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def verify_jwt_token(authorization: Optional[str] = Header(None)):
+    """Verify JWT token from Authorization header"""
+    if not authorization or not authorization.startswith('Bearer '):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid authorization header"
+        )
+    
+    token = authorization.split(' ')[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired"
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
 
 @router.post('/login')
 def login(login: Login):
@@ -108,3 +135,23 @@ def register(register: Register):
                 "email": new_user['email']
             }
         }
+
+@router.delete('/delete-account')
+def delete_account(token_data: dict = Depends(verify_jwt_token)):
+    """Delete user account and all associated data"""
+    user_id = token_data['uuid']
+    
+    with get_db_cursor() as cur:
+        # First, delete all user's listings
+        cur.execute("DELETE FROM listings WHERE seller_id = %s", (user_id,))
+        
+        # Then delete the user account
+        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        
+        if cur.rowcount == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+    
+    return {"message": "Account successfully deleted"}
