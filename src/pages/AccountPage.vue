@@ -8,7 +8,7 @@
     </q-header>
 
     <q-page-container>
-      <q-page class="flex flex-center bg-grey-1">
+      <q-page class="flex flex-center bg-grey-1 q-px-lg q-col-gutter-md">
         <q-card style="width: 100%; max-width: 400px;">
           <q-card-section>
 
@@ -24,9 +24,17 @@
 
           <q-btn
             label="Logout"
-            color="negative"
-            class="full-width"
+            color="primary"
+            class="full-width q-mb-sm"
             @click="logout"
+          />
+
+          <q-btn
+            label="Delete My Account"
+            color="negative"
+            outline
+            class="full-width"
+            @click="confirmDeleteAccount"
           />
         </div>
 
@@ -46,6 +54,9 @@
 </template>
 
 <script>
+import axios from "axios"
+import { API_URL } from '../../constants.js'
+
 export default {
   name: "AccountPage",
   data() {
@@ -81,6 +92,39 @@ export default {
 
     goBack() {
       this.$router.back()
+    },
+
+    confirmDeleteAccount() {
+      if (confirm('Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data including listings.')) {
+        this.deleteAccount()
+      }
+    },
+
+    async deleteAccount() {
+      try {
+        const token = localStorage.getItem('auth_token')
+        if (!token) {
+          alert('Please log in again to delete your account')
+          this.$router.push('/login')
+          return
+        }
+
+        await axios.delete(`${API_URL}auth/delete-account`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        alert('Your account has been successfully deleted.')
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('user')
+        this.$router.push('/')
+
+      } catch (e) {
+        console.error('Error deleting account:', e)
+        const errorMessage = e.response?.data?.detail || e.message || 'An error occurred while deleting your account. Please try again.'
+        alert('Error deleting account: ' + errorMessage)
+      }
     }
   }
 }
