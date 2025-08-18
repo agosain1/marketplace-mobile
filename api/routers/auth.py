@@ -6,6 +6,9 @@ import datetime
 from typing import Optional
 from dotenv import load_dotenv
 import os
+import random
+import string
+import emails
 
 
 load_dotenv()
@@ -21,6 +24,13 @@ router = APIRouter(
 JWT_SECRET = os.getenv("JWT_SECRET_KEY")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
 
+# Email configuration
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+FROM_EMAIL = os.getenv("FROM_EMAIL", SMTP_USER)
+
 
 class Login(BaseModel):
     email: str
@@ -32,6 +42,15 @@ class Register(BaseModel):
     lname: str
     email: str
     password: str
+
+
+class VerifyEmail(BaseModel):
+    email: str
+    code: str
+
+
+class ResendCode(BaseModel):
+    email: str
 
 
 def hash_password(password: str) -> str:
@@ -78,11 +97,99 @@ def verify_jwt_token(authorization: Optional[str] = Header(None)):
         )
 
 
+def verify_jwt_token_and_email(authorization: Optional[str] = Header(None)):
+    """Verify JWT token and check if email is verified"""
+    token_data = verify_jwt_token(authorization)
+    
+    with get_db_cursor() as cur:
+        cur.execute("SELECT email_verified FROM users WHERE id = %s", (token_data['uuid'],))
+        user = cur.fetchone()
+        
+        if not user or not user['email_verified']:
+            raise HTTPException(
+                status_code = status.HTTP_403_FORBIDDEN,
+                detail = "Email verification required"
+            )
+    
+    return token_data
+
+
+def generate_verification_code() -> str:
+    """Generate a 6-digit verification code"""
+    return ''.join(random.choices(string.digits, k=6))
+
+
+def send_verification_email(email: str, code: str, fname: str):
+    """Send verification code via email"""
+    if not SMTP_USER or not SMTP_PASSWORD:
+        raise HTTPException(
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail = "Email service not configured"
+        )
+    
+    subject = "Verify Your Account"
+    html_body = f"""
+    <html>
+        <body>
+            <h2>Welcome to Marketplace, {fname}!</h2>
+            <p>Your verification code is:</p>
+            <h1 style="color: #4CAF50; font-size: 36px; letter-spacing: 4px;">{code}</h1>
+            <p>This code will expire in 10 minutes.</p>
+            <p>If you didn't create an account, please ignore this email.</p>
+        </body>
+    </html>
+    """
+    
+    try:
+        message = emails.html(
+            html=html_body,
+            subject=subject,
+            mail_from=(FROM_EMAIL, "Marketplace"),
+            mail_to=email
+        )
+        
+        response = message.send(
+            smtp={
+                "host": SMTP_HOST,
+                "port": SMTP_PORT,
+                "user": SMTP_USER,
+                "password": SMTP_PASSWORD,
+                "tls": True
+            }
+        )
+        
+        if not response.status_code == 250:
+            raise HTTPException(
+                status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail = "Failed to send verification email"
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail = f"Email sending failed: {str(e)}"
+        )
+
+
+def store_verification_code(user_id: str, code: str):
+    """Store verification code in database"""
+    with get_db_cursor() as cur:
+        expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=10)
+        cur.execute("""
+            INSERT INTO verification_codes (user_id, code, expires_at)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (user_id)
+            DO UPDATE SET
+                code = EXCLUDED.code,
+                created_at = NOW(),
+                expires_at = EXCLUDED.expires_at
+        """, (user_id, code, expires_at))
+
+
 @router.post('/login')
 def login(login: Login):
     with get_db_cursor() as cur:
         # Check if user exists
-        cur.execute("SELECT id, email, password FROM users WHERE email = %s", (login.email,))
+        cur.execute("SELECT id, email, password, email_verified FROM users WHERE email = %s", (login.email,))
         user = cur.fetchone()
 
         if not user:
@@ -96,6 +203,13 @@ def login(login: Login):
             raise HTTPException(
                 status_code = status.HTTP_401_UNAUTHORIZED,
                 detail = "Invalid email or password"
+            )
+
+        # Check if email is verified
+        if not user['email_verified']:
+            raise HTTPException(
+                status_code = status.HTTP_403_FORBIDDEN,
+                detail = "Email not verified. Please verify your email before logging in."
             )
 
         # Create JWT token
@@ -126,24 +240,104 @@ def register(register: Register):
         # Hash password
         hashed_password = hash_password(register.password)
 
-        # Insert new user
+        # Insert new user (email_verified defaults to FALSE)
         cur.execute("""
                     INSERT INTO users (fname, lname, email, password, created_at)
                     VALUES (%s, %s, %s, %s, %s) RETURNING id, email
                     """, (register.fname, register.lname, register.email, hashed_password,
-                          datetime.datetime.utcnow()))
+                          datetime.datetime.now(datetime.timezone.utc)))
 
         new_user = cur.fetchone()
 
-        # Create JWT token
-        token = create_jwt_token(new_user['id'], new_user['email'])
+        # Generate and store verification code
+        verification_code = generate_verification_code()
+        store_verification_code(str(new_user['id']), verification_code)
+
+        # Send verification email
+        send_verification_email(new_user['email'], verification_code, register.fname)
 
         return {
+            "message": "Registration successful. Please check your email for verification code.",
+            "email": new_user['email']
+        }
+
+
+@router.post('/verify-email')
+def verify_email(verify: VerifyEmail):
+    with get_db_cursor() as cur:
+        # Find user by email
+        cur.execute("SELECT id, email_verified FROM users WHERE email = %s", (verify.email,))
+        user = cur.fetchone()
+
+        if not user:
+            raise HTTPException(
+                status_code = status.HTTP_404_NOT_FOUND,
+                detail = "User not found"
+            )
+
+        if user['email_verified']:
+            raise HTTPException(
+                status_code = status.HTTP_400_BAD_REQUEST,
+                detail = "Email already verified"
+            )
+
+        # Verify code and delete if valid
+        cur.execute("""
+            DELETE FROM verification_codes 
+            WHERE user_id = %s AND code = %s AND expires_at > NOW() 
+            RETURNING user_id
+        """, (str(user['id']), verify.code))
+
+        if not cur.fetchone():
+            raise HTTPException(
+                status_code = status.HTTP_400_BAD_REQUEST,
+                detail = "Invalid or expired verification code"
+            )
+
+        # Mark email as verified
+        cur.execute("UPDATE users SET email_verified = TRUE WHERE id = %s", (user['id'],))
+
+        # Create JWT token
+        token = create_jwt_token(user['id'], verify.email)
+
+        return {
+            "message": "Email verified successfully",
             "token": token,
             "user": {
-                "id": new_user['id'],
-                "email": new_user['email']
+                "id": user['id'],
+                "email": verify.email
             }
+        }
+
+
+@router.post('/resend-verification')
+def resend_verification(resend: ResendCode):
+    with get_db_cursor() as cur:
+        # Find user by email
+        cur.execute("SELECT id, fname, email_verified FROM users WHERE email = %s", (resend.email,))
+        user = cur.fetchone()
+
+        if not user:
+            raise HTTPException(
+                status_code = status.HTTP_404_NOT_FOUND,
+                detail = "User not found"
+            )
+
+        if user['email_verified']:
+            raise HTTPException(
+                status_code = status.HTTP_400_BAD_REQUEST,
+                detail = "Email already verified"
+            )
+
+        # Generate and store new verification code
+        verification_code = generate_verification_code()
+        store_verification_code(str(user['id']), verification_code)
+
+        # Send verification email
+        send_verification_email(resend.email, verification_code, user['fname'])
+
+        return {
+            "message": "Verification code sent successfully"
         }
 
 
