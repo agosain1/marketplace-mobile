@@ -27,6 +27,7 @@ def get_db_connection():
 def get_db_cursor():
     """Context manager for database operations"""
     conn = get_db_connection()
+    cursor = None
     try:
         cursor = conn.cursor()
         yield cursor
@@ -35,5 +36,6 @@ def get_db_cursor():
         conn.rollback()
         raise
     finally:
-        cursor.close()
+        if cursor:
+            cursor.close()
         conn.close()

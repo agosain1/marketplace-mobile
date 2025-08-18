@@ -79,7 +79,7 @@ export default {
     // Optional: Poll every 10 seconds to always show current listings
     this.polling = setInterval(() => {
       this.getListings()
-    }, 10000)
+    }, 10000000) // 10000 = 10s
   },
   beforeUnmount() {
     clearInterval(this.polling)
