@@ -1,47 +1,29 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
-
-    <!-- Top Toolbar -->
-    <q-header elevated>
-      <q-toolbar>
-        <q-btn flat dense round icon="menu" @click="leftDrawerOpen = !leftDrawerOpen" />
-        <q-toolbar-title>My Marketplace</q-toolbar-title>
-        <q-btn flat dense round icon="add" @click="goToAddListing" />
-      </q-toolbar>
-    </q-header>
-
-    <!-- Side Drawer (menu) -->
-    <q-drawer v-model="leftDrawerOpen" side="left" bordered>
-      <q-list>
-        <q-item clickable v-ripple @click="goHome">
-          <q-item-section>Home</q-item-section>
-        </q-item>
-        <q-item clickable v-ripple>
-          <q-item-section>My Listings</q-item-section>
-        </q-item>
-      </q-list>
-    </q-drawer>
-
-    <!-- Main Page -->
-    <q-page-container>
-      <q-page padding>
+  <q-page padding>
         <div class="q-pa-md">
-          <q-btn color="primary" label="Add Listing" @click="goToAddListing" class="full-width" />
+          <h4 class="q-mb-md">Current Listings</h4>
         </div>
-
         <div class="q-pa-md">
           <q-card v-for="(listing, index) in listings" :key="index" class="q-mb-md">
             <q-card-section>
+              <div v-if="listing.images && listing.images.length > 0" class="q-mb-md">
+                <img :src="listing.images[0]" :alt="listing.title" style="width: 100%; max-height: 200px; object-fit: cover;" />
+              </div>
               <div class="text-h6">{{ listing.title }}</div>
-              <div class="text-subtitle2">{{ listing.description }}</div>
-              <div class="text-subtitle2">{{ "$" + listing.price }}</div>
+              <div class="text-subtitle2">{{ "Description: " + listing.description }}</div>
+              <div class="text-subtitle2">{{ "$" + listing.price + " " + listing.currency }}</div>
+              <div class="text-subtitle2">{{ "Category: " + listing.category }}</div>
+              <div class="text-subtitle2">{{ "Location: " + listing.location }}</div>
+              <div class="text-subtitle2">{{ "Condition: " + listing.condition }}</div>
+              <div class="text-subtitle2">{{ "Status: " + listing.status }}</div>
+              <div class="text-subtitle2">{{ "Views: " + listing.views }}</div>
+              <div class="text-subtitle2">{{ "Created at: " + listing.created_at }}</div>
+              <div class="text-subtitle2">{{ "Last updated: " + listing.updated_at }}</div>
+
             </q-card-section>
           </q-card>
         </div>
-      </q-page>
-    </q-page-container>
-
-  </q-layout>
+  </q-page>
 </template>
 
 <script>
@@ -53,7 +35,6 @@ export default {
   name: "IndexPage",
   data() {
     return {
-      leftDrawerOpen: false,
       listings: [],
     }
   },
@@ -68,9 +49,6 @@ export default {
     },
     goToAddListing() {
       this.$router.push("/add")
-    },
-    goHome() {
-      this.$router.push("/")
     }
   },
   mounted() {
@@ -79,7 +57,7 @@ export default {
     // Optional: Poll every 10 seconds to always show current listings
     this.polling = setInterval(() => {
       this.getListings()
-    }, 10000)
+    }, 10000) // 10000 = 10s
   },
   beforeUnmount() {
     clearInterval(this.polling)
