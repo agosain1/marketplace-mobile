@@ -1,9 +1,29 @@
 <template>
-  <q-page padding>
-        <div class="q-pa-md">
-          <h4 class="q-mb-md">Current Listings</h4>
-        </div>
-        <div class="q-pa-md">
+  <q-layout view="lHh Lpr lFf">
+    <q-header elevated>
+      <q-toolbar>
+        <q-btn flat dense round icon="menu" @click="leftDrawerOpen = !leftDrawerOpen" />
+        <q-toolbar-title>My Marketplace</q-toolbar-title>
+        <q-btn flat @click="goToLogin"> Login </q-btn>
+        <q-btn flat dense round icon="add" @click="goToAddListing" />
+      </q-toolbar>
+    </q-header>
+
+    <q-drawer v-model="leftDrawerOpen" side="left" bordered>
+      <q-list>
+        <q-item clickable v-ripple @click="goHome">
+          <q-item-section>Home</q-item-section>
+        </q-item>
+        <q-item clickable v-ripple>
+          <q-item-section>My Listings</q-item-section>
+        </q-item>
+      </q-list>
+    </q-drawer>
+
+    <q-page-container>
+      <q-page>
+        <div class="q-px-lg q-pb-md">
+          <h4>Current Listings</h4>
           <q-card v-for="(listing, index) in listings" :key="index" class="q-mb-md">
             <q-card-section>
               <div v-if="listing.images && listing.images.length > 0" class="q-mb-md">
@@ -23,7 +43,9 @@
             </q-card-section>
           </q-card>
         </div>
-  </q-page>
+      </q-page>
+    </q-page-container>
+  </q-layout>
 </template>
 
 <script>
@@ -35,6 +57,7 @@ export default {
   name: "IndexPage",
   data() {
     return {
+      leftDrawerOpen: false,
       listings: [],
     }
   },
@@ -49,6 +72,12 @@ export default {
     },
     goToAddListing() {
       this.$router.push("/add")
+    },
+    goToLogin() {
+      this.$router.push('/login')
+    },
+    goHome() {
+      this.$router.push('/')
     }
   },
   mounted() {

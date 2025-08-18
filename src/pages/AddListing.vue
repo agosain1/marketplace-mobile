@@ -1,5 +1,5 @@
 <template>
-  <q-page class="column flex items-stretch">
+  <q-layout view="lHh Lpr lFf">
     <!-- Mobile Toolbar -->
     <q-header elevated>
       <q-toolbar>
@@ -9,29 +9,33 @@
       </q-toolbar>
     </q-header>
 
-    <!-- Form Content -->
-    <div class="q-pa-md q-gutter-md">
-      <q-input v-model="title" label="Title" filled />
-      <q-input v-model="description" label="Description" filled type="textarea" />
-      <q-input v-model.number="price" label="Price" type="number" filled />
-      <q-input v-model="category" label="Category" filled />
-      <q-input v-model="location" label="Location" filled />
-      <!-- <q-input v-model="condition" label="Condition" filled />-->
-      <!-- <q-input v-model="status" label="Status" filled /> -->
+    <q-page-container>
+      <q-page class="column flex items-stretch">
+        <!-- Form Content -->
+        <div class="q-pa-md q-gutter-md">
+      <q-input v-model="title" label="Title" filled  name="title"/>
+      <q-input v-model="description" label="Description" filled type="textarea"  name="description"/>
+      <q-input v-model.number="price" label="Price" type="number" filled  name="price"/>
+      <q-input v-model="category" label="Category" filled  name="category"/>
+      <q-input v-model="location" label="Location" filled  name="location"/>
+      <!-- <q-input v-model="condition" label="Condition" filled name="condition"/>-->
+      <!-- <q-input v-model="status" label="Status" filled name="status"/> -->
 
       <q-btn label="Add Listing" color="secondary" class="full-width" @click="addListing" />
-    </div>
+        </div>
 
-    <!-- Feedback message -->
-    <div class="q-pa-md">
-      <p v-if="message"><strong>{{ message }}</strong></p>
-      <ul>
-        <li v-for="(listing, idx) in listings" :key="idx">
-          {{ listing.title }} - ${{ listing.price }}
-        </li>
-      </ul>
-    </div>
-  </q-page>
+        <!-- Feedback message -->
+        <div class="q-pa-md">
+          <p v-if="message"><strong>{{ message }}</strong></p>
+          <ul>
+            <li v-for="(listing, idx) in listings" :key="idx">
+              {{ listing.title }} - ${{ listing.price }}
+            </li>
+          </ul>
+        </div>
+      </q-page>
+    </q-page-container>
+  </q-layout>
 </template>
 
 <script setup>
