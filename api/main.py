@@ -28,7 +28,8 @@ class Listing(BaseModel):
 
 @app.post("/listings")
 def create_listing(listing: Listing):
-    new_listing = (listing.title, listing.description, listing.price, 'USD', listing.category, listing.location, 'new', 'active', 0, 'b3cfa2be-8a5f-4e3a-9020-8f84c234c678', ["https://example.com/macbook-front.jpg"])
+    new_listing = (listing.title, listing.description, listing.price, 'USD', listing.category, listing.location,
+                   'new', 'active', 0, 'b3cfa2be-8a5f-4e3a-9020-8f84c234c678', ["https://placebear.com/g/200/200"])
     with get_db_cursor() as cur:
         cur.execute(INSERT_COMMAND, new_listing)
     return {"message": "Listing added successfully", "listing": new_listing}
@@ -38,5 +39,4 @@ def get_listings():
     with get_db_cursor() as cur:
         cur.execute("SELECT * FROM listings")
         response = cur.fetchall()
-        print(response)
     return response
