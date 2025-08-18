@@ -11,7 +11,6 @@ router = APIRouter(
     tags=["auth"]
 )
 
-# JWT Secret (in production, use environment variable)
 JWT_SECRET = "your-secret-key-here"
 JWT_ALGORITHM = "HS256"
 
