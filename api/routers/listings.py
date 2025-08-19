@@ -1,7 +1,8 @@
 from pydantic import BaseModel
-from fastapi import APIRouter
-
+from fastapi import APIRouter, Depends
 from api.database import get_db_cursor
+from .auth import verify_jwt_token
+from fastapi import HTTPException, status
 
 router = APIRouter(
     prefix="/listings",
@@ -35,3 +36,44 @@ def get_listings():
         cur.execute("SELECT * FROM listings")
         response = cur.fetchall()
     return response
+
+@router.get("/my_listings")
+def get_my_listings(token_data: dict = Depends(verify_jwt_token)):
+    user_id = token_data['uuid']
+    with get_db_cursor() as cur:
+        cur.execute("SELECT * FROM listings WHERE seller_id = %s", (user_id, ))
+        response = cur.fetchall()
+    return response
+
+@router.delete("/{listing_id}")
+def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token)):
+    user_id = token_data['uuid']
+    
+    with get_db_cursor() as cur:
+        # First check if the listing exists and belongs to the user
+        cur.execute("SELECT seller_id FROM listings WHERE id = %s", (listing_id,))
+        listing = cur.fetchone()
+        
+        if not listing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Listing not found"
+            )
+        
+        # Check if the user owns this listing
+        if listing['seller_id'] != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only delete your own listings"
+            )
+        
+        # Delete the listing
+        cur.execute("DELETE FROM listings WHERE id = %s", (listing_id,))
+        
+        if cur.rowcount == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Listing not found"
+            )
+    
+    return {"message": "Listing deleted successfully"}

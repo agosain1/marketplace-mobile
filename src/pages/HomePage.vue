@@ -3,7 +3,7 @@
     <q-header elevated>
       <q-toolbar>
         <q-btn flat dense round icon="menu" @click="leftDrawerOpen = !leftDrawerOpen" />
-        <q-toolbar-title>My Marketplace</q-toolbar-title>
+        <q-toolbar-title>Unimarket</q-toolbar-title>
         <q-btn v-if="!isLoggedIn" flat @click="goToLogin"> Login </q-btn>
         <q-btn v-else flat dense round icon="account_circle" @click="goToAccount" />
         <q-btn flat dense round icon="add" @click="goToAddListing" />
@@ -15,7 +15,7 @@
         <q-item clickable v-ripple @click="goHome">
           <q-item-section>Home</q-item-section>
         </q-item>
-        <q-item clickable v-ripple>
+        <q-item clickable v-ripple @click="goToMyListings">
           <q-item-section>My Listings</q-item-section>
         </q-item>
       </q-list>
@@ -91,6 +91,9 @@ export default {
     },
     goHome() {
       this.$router.push('/')
+    },
+    goToMyListings() {
+      this.$router.push('/my-listings')
     }
   },
   mounted() {

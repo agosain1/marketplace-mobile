@@ -248,6 +248,7 @@ def login(login: Login):
             detail = "Email not verified. We've sent you a new verification code.",
             headers = {"X-Verification-Email": user['email']}
         )
+    return {"message": "An error occurred."}
 
 
 @router.post('/register')
