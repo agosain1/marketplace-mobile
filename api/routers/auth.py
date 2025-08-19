@@ -13,7 +13,7 @@ import emails
 
 load_dotenv()
 
-from api.database import get_db_cursor
+from database import get_db_cursor
 
 
 router = APIRouter(

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends
-from api.database import get_db_cursor
+from database import get_db_cursor
 from .auth import verify_jwt_token
 from fastapi import HTTPException, status
 

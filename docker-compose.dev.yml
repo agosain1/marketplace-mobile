@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # Backend API with hot reload (using existing AWS RDS database)
+  backend:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: marketplace-backend-dev
+    restart: unless-stopped
+    environment:
+      DB_HOST: market-db.cv0q0cewwvb9.us-west-1.rds.amazonaws.com
+      DB_PORT: 5432
+      DB_NAME: postgres
+      DB_USER: folders
+      DB_PASSWORD: tO8uOtRGjBVvjISyHJFp
+      JWT_SECRET_KEY: fab197034fe72822c3c8288425ef7d51a63cbe2091155391830f9d4cbe94ee17
+      JWT_ALGORITHM: HS256
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_USER: us.unimarket@gmail.com
+      SMTP_PASSWORD: pkzfdiztswrpmqxn
+      FROM_EMAIL: us.unimarket@gmail.com
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api:/app
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
