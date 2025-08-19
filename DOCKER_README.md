@@ -15,7 +15,18 @@ git clone <repository-url>
 cd marketplace-mobile
 ```
 
-### 2. Run with Docker Compose
+### 2. Setup Environment Variables
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env with your actual values
+nano .env  # or use your preferred editor
+```
+
+**Important**: Never commit your `.env` file to git. It contains sensitive information.
+
+### 3. Run with Docker Compose
 
 #### Production Mode
 ```bash
@@ -63,25 +74,36 @@ The application consists of three main services:
 
 ## Environment Variables
 
-The application uses these environment variables (configured in docker-compose.yml):
+The application uses environment variables for configuration. These are loaded from the `.env` file.
 
-### Database
+### Required Variables (see .env.example):
+
+**Frontend:**
+- `VITE_API_URL`: API base URL (e.g., http://localhost:8000/)
+
+**Database:**
 - `DB_HOST`: Database hostname
-- `DB_PORT`: Database port
+- `DB_PORT`: Database port (usually 5432)
 - `DB_NAME`: Database name
 - `DB_USER`: Database username
 - `DB_PASSWORD`: Database password
 
-### Authentication
-- `JWT_SECRET_KEY`: Secret key for JWT tokens
-- `JWT_ALGORITHM`: Algorithm for JWT signing
+**Authentication:**
+- `JWT_SECRET_KEY`: Secret key for JWT tokens (generate a strong random key)
+- `JWT_ALGORITHM`: Algorithm for JWT signing (HS256 recommended)
 
-### Email (for verification)
+**Email (for verification):**
 - `SMTP_HOST`: SMTP server hostname
 - `SMTP_PORT`: SMTP server port
 - `SMTP_USER`: Email username
-- `SMTP_PASSWORD`: Email password
+- `SMTP_PASSWORD`: Email app password (not regular password)
 - `FROM_EMAIL`: From email address
+
+### Security Notes:
+- Never commit your `.env` file to version control
+- Use strong, unique passwords and secret keys
+- For production, consider using Docker secrets or a secret management service
+- Generate JWT secret with: `openssl rand -hex 32`
 
 ## Development Workflow
 
@@ -164,13 +186,35 @@ docker-compose down --rmi all
 sudo chown -R $USER:$USER .
 ```
 
-## Production Deployment
+## Security Best Practices
 
-For production deployment:
+### Environment Variables
+1. **Never commit `.env` files** - they're in `.gitignore` for a reason
+2. **Use strong secrets** - generate JWT keys with `openssl rand -hex 32`
+3. **Rotate credentials regularly** - especially in production
+4. **Use app passwords** - for email, not your regular password
 
-1. Update environment variables in `docker-compose.yml`
-2. Use proper secrets management
-3. Configure reverse proxy (nginx/traefik)
-4. Set up SSL certificates
-5. Configure backup strategy for database
+### Production Deployment
+1. **Use Docker secrets** or cloud secret management (AWS Secrets Manager, etc.)
+2. **Configure reverse proxy** with SSL (nginx/traefik)
+3. **Set up proper firewall rules**
+4. **Enable database SSL connections**
+5. **Use non-root users** in containers
+6. **Regular security updates** for base images
+
+### Setup for New Developers
+```bash
+# 1. Clone repo
+git clone <repo-url>
+cd marketplace-mobile
+
+# 2. Copy environment template
+cp .env.example .env
+
+# 3. Ask team lead for actual values to put in .env
+# 4. Never commit your .env file!
+
+# 5. Run the application
+docker-compose up -d
+```
 
