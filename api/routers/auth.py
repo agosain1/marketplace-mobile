@@ -131,7 +131,7 @@ def send_verification_email(email: str, code: str, fname: str):
     html_body = f"""
     <html>
         <body>
-            <h2>Welcome to Marketplace, {fname}!</h2>
+            <h2>Welcome to Unimarket, {fname}!</h2>
             <p>Your verification code is:</p>
             <h1 style="color: #4CAF50; font-size: 36px; letter-spacing: 4px;">{code}</h1>
             <p>This code will expire in 10 minutes.</p>
@@ -170,7 +170,7 @@ def send_verification_email(email: str, code: str, fname: str):
         )
 
 
-def store_verification_code(user_id: str, code: str):
+def store_verification_code(user_id, code: str):
     """Store verification code in database"""
     with get_db_cursor() as cur:
         expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=10)
@@ -187,6 +187,10 @@ def store_verification_code(user_id: str, code: str):
 
 @router.post('/login')
 def login(login: Login):
+    user = None
+    user_info = None
+    verification_code = None
+    
     with get_db_cursor() as cur:
         # Check if user exists
         cur.execute("SELECT id, email, password, email_verified FROM users WHERE email = %s", (login.email,))
@@ -207,21 +211,43 @@ def login(login: Login):
 
         # Check if email is verified
         if not user['email_verified']:
-            raise HTTPException(
-                status_code = status.HTTP_403_FORBIDDEN,
-                detail = "Email not verified. Please verify your email before logging in."
-            )
+            # Get user's first name for email
+            cur.execute("SELECT fname FROM users WHERE id = %s", (user['id'],))
+            user_info = cur.fetchone()
+            
+            # Generate and store new verification code
+            verification_code = generate_verification_code()
+            expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=10)
+            cur.execute("""
+                INSERT INTO verification_codes (user_id, code, expires_at)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (user_id)
+                DO UPDATE SET
+                    code = EXCLUDED.code,
+                    created_at = NOW(),
+                    expires_at = EXCLUDED.expires_at
+            """, (user['id'], verification_code, expires_at))
 
-        # Create JWT token
-        token = create_jwt_token(user['id'], user['email'])
-
-        return {
-            "token": token,
-            "user": {
-                "id": user['id'],
-                "email": user['email']
+        # If user is verified, create JWT token
+        if user['email_verified']:
+            token = create_jwt_token(user['id'], user['email'])
+            return {
+                "token": token,
+                "user": {
+                    "id": user['id'],
+                    "email": user['email']
+                }
             }
-        }
+    
+    # Handle unverified user outside transaction
+    if not user['email_verified']:
+        # Send verification email after transaction is committed
+        send_verification_email(user['email'], verification_code, user_info['fname'])
+        raise HTTPException(
+            status_code = status.HTTP_403_FORBIDDEN,
+            detail = "Email not verified. We've sent you a new verification code.",
+            headers = {"X-Verification-Email": user['email']}
+        )
 
 
 @router.post('/register')
@@ -249,17 +275,21 @@ def register(register: Register):
 
         new_user = cur.fetchone()
 
-        # Generate and store verification code
+        # Generate and store verification code in the same transaction
         verification_code = generate_verification_code()
-        store_verification_code(str(new_user['id']), verification_code)
+        expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=10)
+        cur.execute("""
+            INSERT INTO verification_codes (user_id, code, expires_at)
+            VALUES (%s, %s, %s)
+        """, (new_user['id'], verification_code, expires_at))
 
-        # Send verification email
-        send_verification_email(new_user['email'], verification_code, register.fname)
+    # Send verification email after transaction is committed
+    send_verification_email(new_user['email'], verification_code, register.fname)
 
-        return {
-            "message": "Registration successful. Please check your email for verification code.",
-            "email": new_user['email']
-        }
+    return {
+        "message": "Registration successful. Please check your email for verification code.",
+        "email": new_user['email']
+    }
 
 
 @router.post('/verify-email')
@@ -286,7 +316,7 @@ def verify_email(verify: VerifyEmail):
             DELETE FROM verification_codes 
             WHERE user_id = %s AND code = %s AND expires_at > NOW() 
             RETURNING user_id
-        """, (str(user['id']), verify.code))
+        """, (user['id'], verify.code))
 
         if not cur.fetchone():
             raise HTTPException(
@@ -331,7 +361,7 @@ def resend_verification(resend: ResendCode):
 
         # Generate and store new verification code
         verification_code = generate_verification_code()
-        store_verification_code(str(user['id']), verification_code)
+        store_verification_code(user['id'], verification_code)
 
         # Send verification email
         send_verification_email(resend.email, verification_code, user['fname'])

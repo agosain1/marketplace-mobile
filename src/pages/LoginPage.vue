@@ -172,16 +172,33 @@ export default {
 
     async login() {
       console.log('Login attempt:', { email: this.form.email, api_url: API_URL })
-      const response = await axios.post(`${API_URL}auth/login`, {
-        email: this.form.email,
-        password: this.form.password
-      })
+      try {
+        const response = await axios.post(`${API_URL}auth/login`, {
+          email: this.form.email,
+          password: this.form.password
+        })
 
-      if (response.data.token) {
-        localStorage.setItem('auth_token', response.data.token)
-        localStorage.setItem('user', JSON.stringify(response.data.user))
-        console.log('Successfully signed in!')
-        this.$router.push('/')
+        if (response.data.token) {
+          localStorage.setItem('auth_token', response.data.token)
+          localStorage.setItem('user', JSON.stringify(response.data.user))
+          console.log('Successfully signed in!')
+          this.$router.push('/')
+        }
+      } catch (error) {
+        // Check if this is an email verification error
+        if (error.response?.status === 403 && 
+            error.response?.data?.detail?.includes('Email not verified')) {
+          
+          // Get email from response header or use form email
+          const email = error.response.headers['x-verification-email'] || this.form.email
+          
+          console.log('Email not verified, redirecting to verification page')
+          this.$router.push(`/verify-email/${encodeURIComponent(email)}`)
+          return // Don't re-throw the error since we're handling it
+        }
+        
+        // Re-throw other errors to be handled by the main error handler
+        throw error
       }
     },
 
@@ -193,12 +210,10 @@ export default {
         password: this.form.password
       })
 
-      if (response.data.token) {
-        console.log('Account created successfully!')
-        this.isLogin = true
-        this.resetForm()
-        // Show success message in the error banner (green styling would be better but this works)
-        this.errorMessage = 'Account created successfully! Please sign in with your new credentials.'
+      if (response.data.message && response.data.email) {
+        console.log('Account created successfully! Redirecting to verification page.')
+        // Redirect to verification page with email
+        this.$router.push(`/verify-email/${encodeURIComponent(response.data.email)}`)
       }
     },
 
