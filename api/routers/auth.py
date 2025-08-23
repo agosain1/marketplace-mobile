@@ -376,12 +376,32 @@ def resend_verification(resend: ResendCode):
 def delete_account(token_data: dict = Depends(verify_jwt_token)):
     """Delete user account and all associated data"""
     user_id = token_data['uuid']
+    
+    # Import S3 service here to avoid circular imports
+    try:
+        from api.services.s3_service import s3_service
+        s3_available = True
+    except ImportError:
+        s3_available = False
+        print("S3 service not available, skipping image cleanup")
 
     with get_db_cursor() as cur:
-        # First, delete all user's listings
+        # First, get all listing images to delete from S3
+        all_image_urls = []
+        if s3_available:
+            cur.execute("SELECT images FROM listings WHERE seller_id = %s", (user_id,))
+            listings_with_images = cur.fetchall()
+            
+            for listing in listings_with_images:
+                if listing['images'] and isinstance(listing['images'], list):
+                    # Filter out placeholder images, only delete S3 images
+                    s3_images = [url for url in listing['images'] if not url.startswith('https://placebear.com')]
+                    all_image_urls.extend(s3_images)
+        
+        # Delete all user's listings from database
         cur.execute("DELETE FROM listings WHERE seller_id = %s", (user_id,))
 
-        # Then delete the user account
+        # Delete the user account
         cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
 
         if cur.rowcount == 0:
@@ -389,5 +409,13 @@ def delete_account(token_data: dict = Depends(verify_jwt_token)):
                 status_code = status.HTTP_404_NOT_FOUND,
                 detail = "User not found"
             )
+
+    # Delete images from S3 after database transaction is complete
+    if s3_available and all_image_urls:
+        try:
+            s3_service.delete_listing_images(all_image_urls)
+            print(f"Deleted {len(all_image_urls)} images from S3 for deleted account")
+        except Exception as e:
+            print(f"Warning: Failed to delete some S3 images for deleted account: {str(e)}")
 
     return {"message": "Account successfully deleted"}
