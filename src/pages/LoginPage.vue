@@ -54,10 +54,7 @@
             label="Password"
             :type="showPassword ? 'text' : 'password'"
             outlined
-            :rules="[
-              val => !!val || 'Password is required',
-              val => val.length >= 6 || 'Password must be at least 6 characters'
-            ]"
+            :rules="passwordValidationRules"
             name="password">
             <template v-slot:append>
               <q-icon
@@ -133,7 +130,24 @@ export default {
       }
     }
   },
+  computed: {
+    passwordValidationRules() {
+      return [
+        val => !!val || 'Password is required',
+        val => val.length >= 8 || 'Password must be at least 8 characters',
+        val => /[A-Z]/.test(val) || 'Password must contain at least one uppercase letter',
+        val => /[a-z]/.test(val) || 'Password must contain at least one lowercase letter',
+        val => /[0-9]/.test(val) || 'Password must contain at least one number',
+        val => this.hasSpecialCharacter(val) || 'Password must contain at least one special character'
+      ]
+    }
+  },
   methods: {
+    hasSpecialCharacter(password) {
+      // Define special characters safely without escaping issues
+      const specialChars = '!@#$%^&*(),.?":{}|<>'
+      return specialChars.split('').some(char => password.includes(char))
+    },
     toggleMode() {
       this.isLogin = !this.isLogin
       this.resetForm()
@@ -186,17 +200,17 @@ export default {
         }
       } catch (error) {
         // Check if this is an email verification error
-        if (error.response?.status === 403 && 
+        if (error.response?.status === 403 &&
             error.response?.data?.detail?.includes('Email not verified')) {
-          
+
           // Get email from response header or use form email
           const email = error.response.headers['x-verification-email'] || this.form.email
-          
+
           console.log('Email not verified, redirecting to verification page')
           this.$router.push(`/verify-email/${encodeURIComponent(email)}`)
           return // Don't re-throw the error since we're handling it
         }
-        
+
         // Re-throw other errors to be handled by the main error handler
         throw error
       }
