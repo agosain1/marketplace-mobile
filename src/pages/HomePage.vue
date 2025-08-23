@@ -28,7 +28,53 @@
           <q-card v-for="(listing, index) in listings" :key="index" class="q-mb-md">
             <q-card-section>
               <div v-if="listing.images && listing.images.length > 0" class="q-mb-md">
-                <img :src="listing.images[0]" :alt="listing.title" style="width: 100%; max-height: 200px; object-fit: cover;" />
+                <!-- Image Carousel -->
+                <q-carousel
+                  v-if="listing.images.length > 1"
+                  v-model="imageSlides[index]"
+                  swipeable
+                  animated
+                  arrows
+                  navigation
+                  height="200px"
+                  class="bg-grey-1 shadow-2 rounded-borders"
+                >
+                  <q-carousel-slide
+                    v-for="(image, imgIndex) in listing.images"
+                    :key="imgIndex"
+                    :name="imgIndex"
+                    class="column no-wrap flex-center"
+                  >
+                    <q-img
+                      :src="image"
+                      :alt="`${listing.title} - Image ${imgIndex + 1}`"
+                      fit="cover"
+                      style="height: 200px; width: 100%;"
+                      class="rounded-borders"
+                    />
+                  </q-carousel-slide>
+                </q-carousel>
+                
+                <!-- Single Image -->
+                <q-img
+                  v-else
+                  :src="listing.images[0]"
+                  :alt="listing.title"
+                  fit="cover"
+                  style="height: 200px; width: 100%;"
+                  class="rounded-borders"
+                />
+                
+                <!-- Image Counter -->
+                <div v-if="listing.images.length > 1" class="absolute-top-right q-ma-sm">
+                  <q-chip
+                    dense
+                    color="black"
+                    text-color="white"
+                    icon="photo"
+                    :label="`${(imageSlides[index] || 0) + 1}/${listing.images.length}`"
+                  />
+                </div>
               </div>
               <div class="text-h6">{{ listing.title }}</div>
               <div class="text-subtitle2">{{ "Description: " + listing.description }}</div>
@@ -60,6 +106,7 @@ export default {
     return {
       leftDrawerOpen: false,
       listings: [],
+      imageSlides: {}, // Track current slide for each listing's carousel
     }
   },
   computed: {
@@ -72,6 +119,13 @@ export default {
       try {
         const res = await axios.get(`${API_URL}listings`)
         this.listings = res.data
+        
+        // Initialize image slides for each listing
+        const slides = {}
+        this.listings.forEach((listing, index) => {
+          slides[index] = 0 // Start at first image
+        })
+        this.imageSlides = slides
       } catch (e) {
         console.error("Error fetching listings:", e)
       }
