@@ -1,8 +1,11 @@
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends
-from database import get_db_cursor
+from fastapi import APIRouter, Depends, UploadFile, File, Form
+from api.database import get_db_cursor
 from .auth import verify_jwt_token
 from fastapi import HTTPException, status
+from api.services.s3_service import s3_service
+from typing import List, Optional
+import uuid
 
 router = APIRouter(
     prefix="/listings",
@@ -30,6 +33,76 @@ def create_listing(listing: Listing):
         cur.execute(INSERT_COMMAND, new_listing)
     return {"message": "Listing added successfully", "listing": new_listing}
 
+@router.post("/with-images")
+async def create_listing_with_images(
+    title: str = Form(...),
+    description: str = Form(...),
+    price: float = Form(...),
+    category: str = Form(...),
+    location: str = Form(...),
+    images: List[UploadFile] = File(...),
+    token_data: dict = Depends(verify_jwt_token)
+):
+    seller_id = token_data['uuid']
+    listing_id = str(uuid.uuid4())
+    
+    try:
+        # Validate image files
+        allowed_extensions = {'jpg', 'jpeg', 'png', 'webp'}
+        max_file_size = 5 * 1024 * 1024  # 5MB
+        
+        image_urls = []
+        
+        for image in images:
+            # Check file size
+            if hasattr(image, 'size') and image.size > max_file_size:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"Image {image.filename} is too large. Maximum size is 5MB."
+                )
+            
+            # Check file extension
+            file_extension = image.filename.split('.')[-1].lower()
+            if file_extension not in allowed_extensions:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid file type. Allowed: {', '.join(allowed_extensions)}"
+                )
+            
+            # Read file content
+            file_content = await image.read()
+            
+            # Upload to S3
+            image_url = s3_service.upload_listing_image(file_content, file_extension, listing_id)
+            image_urls.append(image_url)
+        
+        # Insert listing into database
+        new_listing = (
+            title, description, price, 'USD', category, location,
+            'new', 'active', 0, seller_id, image_urls
+        )
+        
+        with get_db_cursor() as cur:
+            cur.execute(INSERT_COMMAND, new_listing)
+        
+        return {
+            "message": "Listing created successfully with images",
+            "listing_id": listing_id,
+            "images": image_urls
+        }
+        
+    except Exception as e:
+        # Clean up any uploaded images if database insert fails
+        if 'image_urls' in locals():
+            s3_service.delete_listing_images(image_urls)
+        
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create listing: {str(e)}"
+        )
+
 @router.get("")
 def get_listings():
     with get_db_cursor() as cur:
@@ -51,7 +124,7 @@ def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token)
     
     with get_db_cursor() as cur:
         # First check if the listing exists and belongs to the user
-        cur.execute("SELECT seller_id FROM listings WHERE id = %s", (listing_id,))
+        cur.execute("SELECT seller_id, images FROM listings WHERE id = %s", (listing_id,))
         listing = cur.fetchone()
         
         if not listing:
@@ -67,6 +140,9 @@ def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token)
                 detail="You can only delete your own listings"
             )
         
+        # Get image URLs before deleting
+        image_urls = listing.get('images', [])
+        
         # Delete the listing
         cur.execute("DELETE FROM listings WHERE id = %s", (listing_id,))
         
@@ -75,5 +151,12 @@ def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token)
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Listing not found"
             )
+        
+        # Delete images from S3
+        if image_urls and isinstance(image_urls, list):
+            # Filter out placeholder images
+            s3_images = [url for url in image_urls if not url.startswith('https://placebear.com')]
+            if s3_images:
+                s3_service.delete_listing_images(s3_images)
     
     return {"message": "Listing deleted successfully"}
