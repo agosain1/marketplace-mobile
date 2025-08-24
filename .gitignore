@@ -32,5 +32,22 @@ yarn-error.log*
 *.njsproj
 *.sln
 
-# Local .env files
+# Environment files with secrets
 .env
+.env.local
+.env.production
+.env.development
+*.env
+
+# Security files
+secrets.txt
+*.pem
+*.key
+
+# Docker secrets
+docker-compose.override.yml
+
+# Python cache (for API)
+api/__pycache__/
+api/*.pyc
+api/*.pyo

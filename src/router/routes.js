@@ -9,6 +9,22 @@ const routes = [
       { path: "add", component: AddListing }
     ],
   },
+  {
+    path: '/login',
+    component: () => import('pages/LoginPage.vue'),
+  },
+  {
+    path: '/verify-email/:email?',
+    component: () => import('pages/VerifyEmailPage.vue'),
+  },
+  {
+    path: '/account',
+    component: () => import('pages/AccountPage.vue'),
+  },
+  {
+    path: '/my-listings',
+    component: () => import('pages/MyListings.vue')
+  },
 
   // Always leave this as last one,
   // but you can also remove it
