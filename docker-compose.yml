@@ -4,7 +4,7 @@ services:
   # Backend API (using existing AWS RDS database)
   backend:
     build:
-      context: ./api
+      context: .
       dockerfile: Dockerfile
     container_name: marketplace-backend
     restart: unless-stopped
@@ -13,23 +13,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./api:/app
+      - .:/app
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # Frontend
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: marketplace-frontend
-    restart: unless-stopped
-    env_file:
-      - .env
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
