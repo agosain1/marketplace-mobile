@@ -3,7 +3,7 @@
     <q-header elevated>
       <q-toolbar>
         <q-btn flat dense round icon="menu" @click="leftDrawerOpen = !leftDrawerOpen" />
-        <q-toolbar-title>Unimarket</q-toolbar-title>
+        <q-toolbar-title style="cursor: pointer" @click="goHome">Unimarket</q-toolbar-title>
         <q-btn v-if="!isLoggedIn" flat @click="goToLogin"> Login </q-btn>
         <q-btn v-else flat dense round icon="account_circle" @click="goToAccount" />
         <q-btn flat dense round icon="add" @click="goToAddListing" />
