@@ -1,32 +1,27 @@
-# Build stage
-FROM node:20-alpine as build-stage
+FROM python:3.13-slim
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Install system dependencies for psycopg2 with optimized apt settings
+RUN apt-get update --fix-missing && \
+    apt-get install -y --no-install-recommends \
+    libpq-dev \
+    gcc \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Install dependencies
-RUN npm ci
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
-COPY . .
+ENV PYTHONPATH=/app
 
-# Build the application
-RUN npm run build
-
-# Production stage
-FROM nginx:alpine as production-stage
-
-# Copy built files from build stage
-COPY --from=build-stage /app/dist/spa /usr/share/nginx/html
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy API application code
+COPY api/ ./api/
 
 # Expose port
-EXPOSE 80
+EXPOSE 8000
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Command to run the application
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
