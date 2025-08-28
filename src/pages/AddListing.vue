@@ -22,20 +22,24 @@
       <!-- Image Upload Section -->
       <div class="q-mt-md">
         <q-label class="q-mb-sm">Images (Optional - up to 5 images, 5MB each)</q-label>
-        <q-file 
-          v-model="images" 
-          multiple 
-          accept="image/jpeg,image/jpg,image/png,image/webp"
-          max-files="5"
-          max-file-size="5242880"
-          filled
-          counter
-          @rejected="onImageRejected"
-        >
-          <template v-slot:prepend>
-            <q-icon name="attach_file" />
-          </template>
-        </q-file>
+        <div class="q-mt-sm">
+          <input
+            ref="fileInput"
+            type="file"
+            multiple
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            style="display: none"
+            @change="handleFileSelect"
+          />
+          <q-btn
+            @click="$refs.fileInput.click()"
+            icon="add_photo_alternate"
+            label="Choose Images"
+            color="primary"
+            outline
+            class="full-width"
+          />
+        </div>
         
         <!-- Image Previews -->
         <div v-if="imagePreviews.length > 0" class="q-mt-md">
@@ -133,16 +137,34 @@ watch(images, (newImages) => {
   }
 })
 
-function onImageRejected(rejectedEntries) {
-  rejectedEntries.forEach(entry => {
-    if (entry.failedPropValidation === 'max-file-size') {
-      message.value = `Image "${entry.file.name}" is too large. Maximum size is 5MB.`
-    } else if (entry.failedPropValidation === 'accept') {
-      message.value = `Image "${entry.file.name}" format not supported. Use JPG, PNG, or WebP.`
-    } else if (entry.failedPropValidation === 'max-files') {
-      message.value = 'Maximum 5 images allowed.'
+function handleFileSelect(event) {
+  const files = Array.from(event.target.files)
+  
+  // Validation
+  const maxFiles = 5
+  const maxFileSize = 5 * 1024 * 1024 // 5MB
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+  
+  if (files.length > maxFiles) {
+    message.value = `Maximum ${maxFiles} images allowed.`
+    return
+  }
+  
+  for (const file of files) {
+    if (file.size > maxFileSize) {
+      message.value = `Image "${file.name}" is too large. Maximum size is 5MB.`
+      return
     }
-  })
+    
+    if (!allowedTypes.includes(file.type)) {
+      message.value = `Image "${file.name}" format not supported. Use JPG, PNG, or WebP.`
+      return
+    }
+  }
+  
+  // Set images and clear any previous error message
+  images.value = files.length > 0 ? files : null
+  message.value = ""
 }
 
 function removeImage(index) {
@@ -224,6 +246,12 @@ async function addListing() {
     location.value = ""
     images.value = null
     imagePreviews.value = []
+    
+    // Reset file input
+    const fileInput = document.querySelector('input[type="file"]')
+    if (fileInput) {
+      fileInput.value = ""
+    }
     
   } catch (e) {
     console.error('Error creating listing:', e)
