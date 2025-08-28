@@ -1,0 +1,3 @@
+# Disable Nixpacks auto-detection and force Docker build
+[build]
+providers = []
