@@ -7,8 +7,12 @@ import axios from 'axios'
 // good idea to move this instance creation inside of the
 // "export default () => {}" function below (which runs individually
 // for each client)
+// Ensure baseURL always has a trailing slash
+const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const baseURL = apiUrl.endsWith('/') ? apiUrl : `${apiUrl}/`
+
 const api = axios.create({ 
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000'
+  baseURL: baseURL
 })
 
 export default defineBoot(({ app }) => {
