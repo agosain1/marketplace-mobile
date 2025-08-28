@@ -379,7 +379,7 @@ def delete_account(token_data: dict = Depends(verify_jwt_token)):
     
     # Import S3 service here to avoid circular imports
     try:
-        from api.services.s3_service import s3_service
+        from api.services.s3_service import get_s3_service
         s3_available = True
     except ImportError:
         s3_available = False
@@ -413,7 +413,7 @@ def delete_account(token_data: dict = Depends(verify_jwt_token)):
     # Delete images from S3 after database transaction is complete
     if s3_available and all_image_urls:
         try:
-            s3_service.delete_listing_images(all_image_urls)
+            get_s3_service().delete_listing_images(all_image_urls)
             print(f"Deleted {len(all_image_urls)} images from S3 for deleted account")
         except Exception as e:
             print(f"Warning: Failed to delete some S3 images for deleted account: {str(e)}")

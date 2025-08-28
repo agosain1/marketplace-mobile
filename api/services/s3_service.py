@@ -77,5 +77,11 @@ class S3Service:
             print(f"Error deleting images: {str(e)}")
             return False
 
-# Create global instance
-s3_service = S3Service()
+# Create global instance with lazy initialization
+s3_service = None
+
+def get_s3_service():
+    global s3_service
+    if s3_service is None:
+        s3_service = S3Service()
+    return s3_service
