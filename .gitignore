@@ -51,3 +51,13 @@ docker-compose.override.yml
 api/__pycache__/
 api/*.pyc
 api/*.pyo
+
+# Railway deployment files (local helpers, not needed in Git)
+railway-deploy.sh
+# railway.toml - Keep this commented, we need nixpacks.toml instead
+
+# Keep these Railway config files for GitHub deployment:
+# railway.json - Main config
+# railway-backend.json - Backend service config  
+# railway-frontend.json - Frontend service config
+# nixpacks.toml - Prevents auto-detection issues
