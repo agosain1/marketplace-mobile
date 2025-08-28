@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form
 from api.database import get_db_cursor
 from .auth import verify_jwt_token
 from fastapi import HTTPException, status
-from api.services.s3_service import s3_service
+from api.services.s3_service import get_s3_service
 from typing import List, Optional
 import uuid
 
@@ -73,7 +73,7 @@ async def create_listing_with_images(
             file_content = await image.read()
             
             # Upload to S3
-            image_url = s3_service.upload_listing_image(file_content, file_extension, listing_id)
+            image_url = get_s3_service().upload_listing_image(file_content, file_extension, listing_id)
             image_urls.append(image_url)
         
         # Insert listing into database
@@ -94,7 +94,7 @@ async def create_listing_with_images(
     except Exception as e:
         # Clean up any uploaded images if database insert fails
         if 'image_urls' in locals():
-            s3_service.delete_listing_images(image_urls)
+            get_s3_service().delete_listing_images(image_urls)
         
         if isinstance(e, HTTPException):
             raise e
@@ -157,6 +157,6 @@ def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token)
             # Filter out placeholder images
             s3_images = [url for url in image_urls if not url.startswith('https://placebear.com')]
             if s3_images:
-                s3_service.delete_listing_images(s3_images)
+                get_s3_service().delete_listing_images(s3_images)
     
     return {"message": "Listing deleted successfully"}
