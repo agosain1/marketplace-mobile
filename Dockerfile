@@ -1,14 +1,15 @@
 # Multi-stage build for both frontend and backend
 FROM node:18-alpine AS frontend-build
 
-# Build frontend
-WORKDIR /frontend
+# Build frontend - copy everything first, then build
+WORKDIR /app
 COPY package*.json ./
-RUN npm install
+COPY quasar.config.js ./
 COPY . .
+RUN npm install
 RUN npm run build
 
-# Python backend stage
+# Python backend stage  
 FROM python:3.11-slim AS backend-base
 
 WORKDIR /app
@@ -21,15 +22,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY api/ ./api/
 COPY .env* ./
 
-# Nginx stage for serving frontend
-FROM nginx:alpine AS frontend-runtime
-
-# Copy built frontend from frontend-build stage
-COPY --from=frontend-build /frontend/dist/spa /usr/share/nginx/html
-
-# Copy nginx config
-COPY nginx.conf /etc/nginx/nginx.conf
-
 # Final runtime stage
 FROM python:3.11-slim AS runtime
 
@@ -38,16 +30,31 @@ RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy backend dependencies and code
-COPY --from=backend-base /app ./
+# Copy Python environment
 COPY --from=backend-base /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=backend-base /usr/local/bin /usr/local/bin
 
-# Copy frontend build
-COPY --from=frontend-build /frontend/dist/spa /usr/share/nginx/html
+# Copy backend code and dependencies
+COPY --from=backend-base /app ./
 
-# Copy nginx config and startup script
-COPY nginx.conf /etc/nginx/nginx.conf
+# Copy frontend build
+COPY --from=frontend-build /app/dist/spa /usr/share/nginx/html
+
+# Copy nginx config if it exists, otherwise create default
+RUN echo 'events { worker_connections 1024; } \
+http { \
+    include /etc/nginx/mime.types; \
+    default_type application/octet-stream; \
+    server { \
+        listen 80; \
+        location / { \
+            root /usr/share/nginx/html; \
+            try_files $uri $uri/ /index.html; \
+        } \
+    } \
+}' > /etc/nginx/nginx.conf
+
+# Copy startup script
 COPY railway-start-service.sh /app/railway-start-service.sh
 RUN chmod +x /app/railway-start-service.sh
 
