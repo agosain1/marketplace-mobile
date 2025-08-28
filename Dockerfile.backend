@@ -40,5 +40,5 @@ COPY api/ ./api/
 # Expose port
 EXPOSE 8000
 
-# Command to run the application  
-CMD ["./start.sh", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Command to run the application using Railway's PORT variable
+CMD ["./railway-start.sh"]
