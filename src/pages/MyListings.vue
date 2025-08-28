@@ -48,7 +48,7 @@
 
           <!-- Show listings if logged in -->
           <div v-else>
-            <q-card v-for="(listing, index) in listings" :key="index" class="q-mb-md">
+            <q-card v-for="(listing, index) in listings" :key="index" class="q-mb-md cursor-pointer" @click="goToListing(listing.id)">
               <q-card-section>
                 <div v-if="listing.images && listing.images.length > 0" class="q-mb-md">
                   <!-- Image Carousel -->
@@ -107,8 +107,8 @@
                 <div class="text-subtitle2">{{ "Condition: " + listing.condition }}</div>
                 <div class="text-subtitle2">{{ "Status: " + listing.status }}</div>
                 <div class="text-subtitle2">{{ "Views: " + listing.views }}</div>
-                <div class="text-subtitle2">{{ "Created at: " + listing.created_at }}</div>
-                <div class="text-subtitle2">{{ "Last updated: " + listing.updated_at }}</div>
+                <div class="text-subtitle2">{{ "Created at: " + formatDate(listing.created_at) }}</div>
+                <div class="text-subtitle2">{{ "Last updated: " + formatDate(listing.updated_at) }}</div>
               </q-card-section>
               <q-card-actions align="right">
                 <q-btn
@@ -116,7 +116,7 @@
                   color="negative"
                   icon="delete"
                   label="Remove"
-                  @click="removeListing(listing.id, index)"
+                  @click.stop="removeListing(listing.id, index)"
                   :loading="listing.removing"
                 />
               </q-card-actions>
@@ -249,6 +249,18 @@ export default {
           this.listings[index].removing = false
         }
       }
+    },
+    goToListing(listingId) {
+      this.$router.push(`/listing/${listingId}`)
+    },
+    formatDate(dateString) {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
     }
   },
   mounted() {

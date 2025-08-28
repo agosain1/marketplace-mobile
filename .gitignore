@@ -61,3 +61,8 @@ railway-deploy.sh
 # railway-backend.json - Backend service config  
 # railway-frontend.json - Frontend service config
 # nixpacks.toml - Prevents auto-detection issues
+
+backend-task.json
+ecs-task-definition.json
+frontend-task.json
+ssm-policy.json

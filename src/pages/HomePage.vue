@@ -25,7 +25,7 @@
       <q-page>
         <div class="q-px-lg q-pb-md">
           <h4>Current Listings</h4>
-          <q-card v-for="(listing, index) in listings" :key="index" class="q-mb-md">
+          <q-card v-for="(listing, index) in listings" :key="index" class="q-mb-md cursor-pointer" @click="goToListing(listing.id)">
             <q-card-section>
               <div v-if="listing.images && listing.images.length > 0" class="q-mb-md">
                 <!-- Image Carousel -->
@@ -84,8 +84,8 @@
               <div class="text-subtitle2">{{ "Condition: " + listing.condition }}</div>
               <div class="text-subtitle2">{{ "Status: " + listing.status }}</div>
               <div class="text-subtitle2">{{ "Views: " + listing.views }}</div>
-              <div class="text-subtitle2">{{ "Created at: " + listing.created_at }}</div>
-              <div class="text-subtitle2">{{ "Last updated: " + listing.updated_at }}</div>
+              <div class="text-subtitle2">{{ "Created at: " + formatDate(listing.created_at) }}</div>
+              <div class="text-subtitle2">{{ "Last updated: " + formatDate(listing.updated_at) }}</div>
 
             </q-card-section>
           </q-card>
@@ -148,6 +148,18 @@ export default {
     },
     goToMyListings() {
       this.$router.push('/my-listings')
+    },
+    goToListing(listingId) {
+      this.$router.push(`/listing/${listingId}`)
+    },
+    formatDate(dateString) {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
     }
   },
   mounted() {

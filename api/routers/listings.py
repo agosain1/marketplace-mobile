@@ -118,6 +118,20 @@ def get_my_listings(token_data: dict = Depends(verify_jwt_token)):
         response = cur.fetchall()
     return response
 
+@router.get("/{listing_id}")
+def get_listing(listing_id: str):
+    with get_db_cursor() as cur:
+        cur.execute("SELECT * FROM listings WHERE id = %s", (listing_id,))
+        listing = cur.fetchone()
+        
+        if not listing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Listing not found"
+            )
+        
+    return listing
+
 @router.delete("/{listing_id}")
 def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token)):
     user_id = token_data['uuid']
