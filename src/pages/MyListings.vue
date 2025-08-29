@@ -25,7 +25,7 @@
       <q-page>
         <div class="q-px-lg q-pb-md">
           <h4>My Listings</h4>
-          
+
           <!-- Show login prompt if not logged in -->
           <div v-if="!isLoggedIn" class="flex flex-center q-mt-xl">
             <q-card style="width: 100%; max-width: 400px;">
@@ -77,7 +77,7 @@
                       />
                     </q-carousel-slide>
                   </q-carousel>
-                  
+
                   <!-- Single Image -->
                   <q-img
                     v-else
@@ -87,7 +87,7 @@
                     style="height: 200px; width: 100%;"
                     class="rounded-borders"
                   />
-                  
+
                   <!-- Image Counter -->
                   <div v-if="listing.images.length > 1" class="absolute-top-right q-ma-sm">
                     <q-chip
@@ -107,8 +107,8 @@
                 <div class="text-subtitle2">{{ "Condition: " + listing.condition }}</div>
                 <div class="text-subtitle2">{{ "Status: " + listing.status }}</div>
                 <div class="text-subtitle2">{{ "Views: " + listing.views }}</div>
-                <div class="text-subtitle2">{{ "Created at: " + formatDate(listing.created_at) }}</div>
-                <div class="text-subtitle2">{{ "Last updated: " + formatDate(listing.updated_at) }}</div>
+                <div class="text-subtitle2">{{ "Created at: " + formatDate(listing.created_at) + " " + getTimezoneAbbreviation() }}</div>
+                <div class="text-subtitle2">{{ "Last updated: " + formatDate(listing.updated_at) + " " + getTimezoneAbbreviation() }}</div>
               </q-card-section>
               <q-card-actions align="right">
                 <q-btn
@@ -121,7 +121,7 @@
                 />
               </q-card-actions>
             </q-card>
-            
+
             <!-- Show message if no listings -->
             <div v-if="listings.length === 0" class="text-center q-mt-xl">
               <q-icon name="inbox" size="64px" color="grey-5" class="q-mb-md" />
@@ -142,6 +142,7 @@
 <script>
 import axios from "axios"
 import { API_URL } from '../../constants.js'
+import { formatDate, getTimezoneAbbreviation } from '../utils/dateUtils.js'
 
 
 export default {
@@ -174,7 +175,7 @@ export default {
           }
         })
         this.listings = res.data
-        
+
         // Initialize image slides for each listing
         const slides = {}
         this.listings.forEach((listing, index) => {
@@ -229,11 +230,11 @@ export default {
 
         // Remove listing from local array
         this.listings.splice(index, 1)
-        
+
         console.log('Listing removed successfully')
       } catch (error) {
         console.error('Error removing listing:', error)
-        
+
         // Handle auth errors
         if (error.response?.status === 401 || error.response?.status === 403) {
           localStorage.removeItem('auth_token')
@@ -241,7 +242,7 @@ export default {
           this.$router.push('/login')
           return
         }
-        
+
         alert('Failed to remove listing. Please try again.')
       } finally {
         // Clear loading state
@@ -253,15 +254,8 @@ export default {
     goToListing(listingId) {
       this.$router.push(`/listing/${listingId}`)
     },
-    formatDate(dateString) {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    }
+    formatDate,
+    getTimezoneAbbreviation
   },
   mounted() {
     // Only fetch listings if user is logged in

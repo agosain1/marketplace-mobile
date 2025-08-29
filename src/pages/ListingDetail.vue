@@ -155,7 +155,7 @@
                   </q-item-section>
                   <q-item-section>
                     <q-item-label>Created</q-item-label>
-                    <q-item-label caption>{{ formatDate(listing.created_at) + " TIMEZONE"}}</q-item-label>
+                    <q-item-label caption>{{ formatDate(listing.created_at) + " " + getTimezoneAbbreviation() }}</q-item-label>
                   </q-item-section>
                 </q-item>
 
@@ -165,7 +165,7 @@
                   </q-item-section>
                   <q-item-section>
                     <q-item-label>Last Updated</q-item-label>
-                    <q-item-label caption>{{ formatDate(listing.updated_at) }}</q-item-label>
+                    <q-item-label caption>{{ formatDate(listing.updated_at) + " " + getTimezoneAbbreviation() }}</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -180,6 +180,7 @@
 <script>
 import axios from "axios"
 import { API_URL } from '../../constants.js'
+import { formatDate, getTimezoneAbbreviation } from '../utils/dateUtils.js'
 
 export default {
   name: "ListingDetail",
@@ -227,15 +228,8 @@ export default {
     goToAccount() {
       this.$router.push('/account')
     },
-    formatDate(dateString) {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    }
+    formatDate,
+    getTimezoneAbbreviation
   },
   mounted() {
     this.fetchListing()
