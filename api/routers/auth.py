@@ -9,6 +9,9 @@ import os
 import random
 import string
 import emails
+from google.auth.transport import requests
+from google.oauth2 import id_token
+import uuid
 
 
 load_dotenv()
@@ -51,6 +54,11 @@ class VerifyEmail(BaseModel):
 
 class ResendCode(BaseModel):
     email: str
+
+
+class GoogleAuth(BaseModel):
+    idToken: str
+    profile: dict
 
 
 def hash_password(password: str) -> str:
@@ -193,7 +201,7 @@ def login(login: Login):
     
     with get_db_cursor() as cur:
         # Check if user exists
-        cur.execute("SELECT id, email, password, email_verified FROM users WHERE email = %s", (login.email,))
+        cur.execute("SELECT id, email, password, email_verified, google_id FROM users WHERE email = %s", (login.email,))
         user = cur.fetchone()
 
         if not user:
@@ -202,7 +210,21 @@ def login(login: Login):
                 detail = "Invalid email or password"
             )
 
-        # Verify password
+        # Check if this is a Google user trying to login with password
+        if user['google_id'] and not user['password']:
+            raise HTTPException(
+                status_code = status.HTTP_400_BAD_REQUEST,
+                detail = "This account was created with Google. Please use 'Continue with Google' to sign in."
+            )
+
+        # Check if user has a password (regular user)
+        if not user['password']:
+            raise HTTPException(
+                status_code = status.HTTP_401_UNAUTHORIZED,
+                detail = "Invalid email or password"
+            )
+
+        # Verify password for regular users
         if not verify_password(login.password, user['password']):
             raise HTTPException(
                 status_code = status.HTTP_401_UNAUTHORIZED,
@@ -419,3 +441,98 @@ def delete_account(token_data: dict = Depends(verify_jwt_token)):
             print(f"Warning: Failed to delete some S3 images for deleted account: {str(e)}")
 
     return {"message": "Account successfully deleted"}
+
+
+@router.post('/google')
+def google_signin(google_auth: GoogleAuth):
+    """Authenticate user with Google ID token"""
+    try:
+        # Verify the Google ID token
+        GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+        if not GOOGLE_CLIENT_ID:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Google authentication not configured"
+            )
+
+        # Verify the ID token with Google
+        try:
+            # Verify token with Google's servers
+            idinfo = id_token.verify_oauth2_token(
+                google_auth.idToken, 
+                requests.Request(), 
+                GOOGLE_CLIENT_ID
+            )
+            
+            # Extract user information from verified token
+            google_email = idinfo['email']
+            google_sub = idinfo['sub']  # Google's unique user ID
+            email_verified = idinfo.get('email_verified', False)
+            
+            # Try to get name from token, fall back to profile data
+            first_name = idinfo.get('given_name') or google_auth.profile.get('given_name', '')
+            last_name = idinfo.get('family_name') or google_auth.profile.get('family_name', '')
+            
+        except ValueError as e:
+            # Invalid token
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid Google token: {str(e)}"
+            )
+
+        with get_db_cursor() as cur:
+            # Check if user already exists by email
+            cur.execute("SELECT id, email, google_id, email_verified FROM users WHERE email = %s", (google_email,))
+            existing_user = cur.fetchone()
+
+            if existing_user:
+                # Update existing user with Google ID if not set
+                if not existing_user['google_id']:
+                    cur.execute("UPDATE users SET google_id = %s, email_verified = %s WHERE id = %s", 
+                              (google_sub, True, existing_user['id']))
+                
+                # Create JWT token for existing user
+                token = create_jwt_token(existing_user['id'], existing_user['email'])
+                return {
+                    "token": token,
+                    "user": {
+                        "id": existing_user['id'],
+                        "email": existing_user['email']
+                    }
+                }
+            else:
+                # Create new user account (let database auto-generate id)
+                cur.execute("""
+                    INSERT INTO users (fname, lname, email, google_id, email_verified, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s) 
+                    RETURNING id, email
+                """, (
+                    first_name or 'Google',
+                    last_name or 'User', 
+                    google_email,
+                    google_sub,
+                    True,  # Google accounts are pre-verified
+                    datetime.datetime.now(datetime.timezone.utc)
+                ))
+
+                new_user = cur.fetchone()
+                
+                # Create JWT token for new user
+                token = create_jwt_token(new_user['id'], new_user['email'])
+                return {
+                    "token": token,
+                    "user": {
+                        "id": new_user['id'],
+                        "email": new_user['email']
+                    }
+                }
+
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Handle any other errors
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Google authentication failed: {str(e)}"
+        )
