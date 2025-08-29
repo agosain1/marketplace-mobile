@@ -23,12 +23,13 @@ class Listing(BaseModel):
     price: float
     category: str
     location: str
+    condition: str
     seller_id: str
 
 @router.post("")
 def create_listing(listing: Listing):
     new_listing = (listing.title, listing.description, listing.price, 'USD', listing.category, listing.location,
-                   'new', 'active', 0, listing.seller_id, ["https://placebear.com/g/200/200"])
+                   listing.condition, 'active', 0, listing.seller_id, ["https://placebear.com/g/200/200"])
     with get_db_cursor() as cur:
         cur.execute(INSERT_COMMAND, new_listing)
     return {"message": "Listing added successfully", "listing": new_listing}
@@ -40,6 +41,7 @@ async def create_listing_with_images(
     price: float = Form(...),
     category: str = Form(...),
     location: str = Form(...),
+    condition: str = Form(...),
     images: List[UploadFile] = File(...),
     token_data: dict = Depends(verify_jwt_token)
 ):
@@ -79,14 +81,14 @@ async def create_listing_with_images(
         # Insert listing into database
         new_listing = (
             title, description, price, 'USD', category, location,
-            'new', 'active', 0, seller_id, image_urls
+            condition, 'active', 0, seller_id, image_urls
         )
         
         with get_db_cursor() as cur:
             cur.execute(INSERT_COMMAND, new_listing)
         
         return {
-            "message": "Listing created successfully with images",
+            "message": "Listing created successfully",
             "listing_id": listing_id,
             "images": image_urls
         }

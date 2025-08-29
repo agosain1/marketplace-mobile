@@ -18,6 +18,15 @@
       <q-input v-model.number="price" label="Price" type="number" filled  name="price"/>
       <q-input v-model="category" label="Category" filled  name="category"/>
       <q-input v-model="location" label="Location" filled  name="location"/>
+      <q-select 
+        v-model="condition" 
+        :options="conditionOptions" 
+        label="Condition" 
+        filled 
+        emit-value 
+        map-options
+        name="condition"
+      />
       
       <!-- Image Upload Section -->
       <div class="q-mt-md">
@@ -112,11 +121,17 @@ const title = ref("")
 const description = ref("")
 const price = ref(null)
 const category = ref("")
-const location = ref ("")
+const location = ref("")
+const condition = ref("")
 const images = ref(null)
 const imagePreviews = ref([])
-//const condition = ref("")
-//const status = ref("")
+
+// Condition options
+const conditionOptions = [
+  { label: 'New', value: 'new' },
+  { label: 'Used', value: 'used' },
+  { label: 'Refurbished', value: 'refurbished' }
+]
 
 // Watch for image file changes to generate previews
 watch(images, (newImages) => {
@@ -178,7 +193,7 @@ function removeImage(index) {
 }
 
 async function addListing() {
-  if (!title.value || !description.value || !price.value || !category.value || !location.value ) {
+  if (!title.value || !description.value || !price.value || !category.value || !location.value || !condition.value) {
     message.value = "Please fill out all fields"
     return
   }
@@ -204,6 +219,7 @@ async function addListing() {
       formData.append('price', price.value.toString())
       formData.append('category', category.value)
       formData.append('location', location.value)
+      formData.append('condition', condition.value)
       
       // Add image files
       const files = Array.isArray(images.value) ? images.value : [images.value]
@@ -231,6 +247,7 @@ async function addListing() {
         price: price.value,
         category: category.value,
         location: location.value,
+        condition: condition.value,
         seller_id: user.id
       }
       
@@ -244,6 +261,7 @@ async function addListing() {
     price.value = null
     category.value = ""
     location.value = ""
+    condition.value = ""
     images.value = null
     imagePreviews.value = []
     
