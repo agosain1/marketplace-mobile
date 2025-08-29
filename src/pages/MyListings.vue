@@ -271,5 +271,6 @@ export default {
   beforeUnmount() {
     clearInterval(this.polling)
   }
+
 }
 </script>
