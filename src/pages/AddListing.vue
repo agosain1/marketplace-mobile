@@ -208,52 +208,34 @@ async function addListing() {
   try {
     message.value = "Creating listing..."
     
-    // Determine which endpoint to use based on whether images are provided
-    const hasImages = images.value && (Array.isArray(images.value) ? images.value.length > 0 : true)
+    // Use FormData for both with and without images
+    const formData = new FormData()
+    formData.append('title', title.value)
+    formData.append('description', description.value)
+    formData.append('price', price.value.toString())
+    formData.append('category', category.value)
+    formData.append('location', location.value)
+    formData.append('condition', condition.value)
     
-    if (hasImages) {
-      // Use FormData for file upload
-      const formData = new FormData()
-      formData.append('title', title.value)
-      formData.append('description', description.value)
-      formData.append('price', price.value.toString())
-      formData.append('category', category.value)
-      formData.append('location', location.value)
-      formData.append('condition', condition.value)
-      
-      // Add image files
+    // Add image files if provided
+    if (images.value && (Array.isArray(images.value) ? images.value.length > 0 : true)) {
       const files = Array.isArray(images.value) ? images.value : [images.value]
       files.forEach(file => {
         formData.append('images', file)
       })
-
-      const response = await axios.post(`${API_URL}listings/with-images`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      message.value = "Listing created successfully with images!"
-      console.log('Response:', response.data)
-    } else {
-      // Use regular JSON endpoint for listings without images
-      const userStr = localStorage.getItem('user')
-      const user = JSON.parse(userStr)
-      
-      const listingData = {
-        title: title.value,
-        description: description.value,
-        price: price.value,
-        category: category.value,
-        location: location.value,
-        condition: condition.value,
-        seller_id: user.id
-      }
-      
-      await axios.post(`${API_URL}listings`, listingData)
-      message.value = "Listing created successfully!"
     }
+
+    const response = await axios.post(`${API_URL}listings`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    message.value = images.value && (Array.isArray(images.value) ? images.value.length > 0 : true) 
+      ? "Listing created successfully with images!" 
+      : "Listing created successfully!"
+    console.log('Response:', response.data)
     
     // Reset form
     title.value = ""
