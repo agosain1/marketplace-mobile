@@ -54,7 +54,7 @@
                     />
                   </q-carousel-slide>
                 </q-carousel>
-                
+
                 <!-- Single Image -->
                 <q-img
                   v-else
@@ -64,7 +64,7 @@
                   style="height: 200px; width: 100%;"
                   class="rounded-borders"
                 />
-                
+
                 <!-- Image Counter -->
                 <div v-if="listing.images.length > 1" class="absolute-top-right q-ma-sm">
                   <q-chip
@@ -84,8 +84,8 @@
               <div class="text-subtitle2">{{ "Condition: " + listing.condition }}</div>
               <div class="text-subtitle2">{{ "Status: " + listing.status }}</div>
               <div class="text-subtitle2">{{ "Views: " + listing.views }}</div>
-              <div class="text-subtitle2">{{ "Created at: " + formatDate(listing.created_at) }}</div>
-              <div class="text-subtitle2">{{ "Last updated: " + formatDate(listing.updated_at) }}</div>
+              <div class="text-subtitle2">{{ "Created at: " + formatDate(listing.created_at) + " " + getTimezoneAbbreviation() }}</div>
+              <div class="text-subtitle2">{{ "Last updated: " + formatDate(listing.updated_at) + " " + getTimezoneAbbreviation() }}</div>
 
             </q-card-section>
           </q-card>
@@ -98,6 +98,7 @@
 <script>
 import axios from "axios"
 import { API_URL } from '../../constants.js'
+import { formatDate, getTimezoneAbbreviation } from '../utils/dateUtils.js'
 
 
 export default {
@@ -119,7 +120,7 @@ export default {
       try {
         const res = await axios.get(`${API_URL}listings`)
         this.listings = res.data
-        
+
         // Initialize image slides for each listing
         const slides = {}
         this.listings.forEach((listing, index) => {
@@ -152,15 +153,8 @@ export default {
     goToListing(listingId) {
       this.$router.push(`/listing/${listingId}`)
     },
-    formatDate(dateString) {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    }
+    formatDate,
+    getTimezoneAbbreviation
   },
   mounted() {
     this.getListings()             // fetch once on mount
