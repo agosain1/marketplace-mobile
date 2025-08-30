@@ -12,7 +12,7 @@
         <q-spinner-dots />
         Signing in...
       </template>
-      
+
       <div class="row items-center no-wrap">
         <svg class="q-mr-sm" width="18" height="18" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -38,7 +38,7 @@ export default {
   methods: {
     async handleGoogleSignIn() {
       this.loading = true
-      
+
       try {
         // Check if Google Identity Services is loaded
         if (!window.google?.accounts?.id) {
@@ -47,14 +47,50 @@ export default {
 
         // Create a promise to handle the credential response
         const credential = await new Promise((resolve, reject) => {
+          let isResolved = false
+          let popupOpened = false
+          
           // Create a callback function that will handle the response
           const handleCredentialResponse = (response) => {
+            if (isResolved) return
+            isResolved = true
+            cleanup()
+            
             if (response.credential) {
               resolve(response.credential)
             } else {
               reject(new Error('No credential received'))
             }
           }
+
+          // Track popup state with focus/blur events
+          const handleWindowFocus = () => {
+            if (popupOpened && !isResolved) {
+              // Check after a delay to see if we got a credential
+              setTimeout(() => {
+                if (!isResolved) {
+                  isResolved = true
+                  cleanup()
+                  const error = new Error('Google Sign-In popup was closed')
+                  error.name = 'POPUP_CLOSED'
+                  reject(error)
+                }
+              }, 500)
+            }
+          }
+
+          const handleWindowBlur = () => {
+            popupOpened = true
+          }
+
+          const cleanup = () => {
+            window.removeEventListener('focus', handleWindowFocus)
+            window.removeEventListener('blur', handleWindowBlur)
+          }
+
+          // Add event listeners
+          window.addEventListener('focus', handleWindowFocus)
+          window.addEventListener('blur', handleWindowBlur)
 
           // Initialize Google Identity Services with the callback
           window.google.accounts.id.initialize({
@@ -70,7 +106,7 @@ export default {
           tempDiv.style.top = '-9999px'
           tempDiv.style.left = '-9999px'
           document.body.appendChild(tempDiv)
-          
+
           try {
             window.google.accounts.id.renderButton(tempDiv, {
               theme: 'outline',
@@ -101,6 +137,8 @@ export default {
             }, 2000)
 
           } catch (renderError) {
+            isResolved = true
+            cleanup()
             if (document.body.contains(tempDiv)) {
               document.body.removeChild(tempDiv)
             }
@@ -109,7 +147,11 @@ export default {
 
           // Set a timeout to reject if no response comes
           setTimeout(() => {
-            reject(new Error('Google Sign-In timed out'))
+            if (!isResolved) {
+              isResolved = true
+              cleanup()
+              reject(new Error('Google Sign-In timed out'))
+            }
             if (document.body.contains(tempDiv)) {
               document.body.removeChild(tempDiv)
             }
@@ -118,7 +160,7 @@ export default {
 
         // Decode the JWT token to get user info
         const payload = JSON.parse(atob(credential.split('.')[1]))
-        
+
         const profile = {
           id: payload.sub,
           email: payload.email,
@@ -127,7 +169,7 @@ export default {
           given_name: payload.given_name,
           family_name: payload.family_name,
         }
-        
+
         this.$emit('success', {
           idToken: credential,
           profile
