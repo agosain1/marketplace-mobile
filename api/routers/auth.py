@@ -8,12 +8,12 @@ from dotenv import load_dotenv
 import os
 import random
 import string
-import emails
 
 
 load_dotenv()
 
 from api.database import get_db_cursor
+from api.services.email_service import get_email_service
 
 
 router = APIRouter(
@@ -23,13 +23,6 @@ router = APIRouter(
 
 JWT_SECRET = os.getenv("JWT_SECRET_KEY")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
-
-# Email configuration
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-FROM_EMAIL = os.getenv("FROM_EMAIL", SMTP_USER)
 
 
 class Login(BaseModel):
@@ -120,54 +113,9 @@ def generate_verification_code() -> str:
 
 
 def send_verification_email(email: str, code: str, fname: str):
-    """Send verification code via email"""
-    if not SMTP_USER or not SMTP_PASSWORD:
-        raise HTTPException(
-            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail = "Email service not configured"
-        )
-    
-    subject = "Verify Your Account"
-    html_body = f"""
-    <html>
-        <body>
-            <h2>Welcome to Unimarket, {fname}!</h2>
-            <p>Your verification code is:</p>
-            <h1 style="color: #4CAF50; font-size: 36px; letter-spacing: 4px;">{code}</h1>
-            <p>This code will expire in 10 minutes.</p>
-            <p>If you didn't create an account, please ignore this email.</p>
-        </body>
-    </html>
-    """
-    
-    try:
-        message = emails.html(
-            html=html_body,
-            subject=subject,
-            mail_from=(FROM_EMAIL, "Marketplace"),
-            mail_to=email
-        )
-        
-        response = message.send(
-            smtp={
-                "host": SMTP_HOST,
-                "port": SMTP_PORT,
-                "user": SMTP_USER,
-                "password": SMTP_PASSWORD,
-                "tls": True
-            }
-        )
-        
-        if not response.status_code == 250:
-            raise HTTPException(
-                status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail = "Failed to send verification email"
-            )
-    except Exception as e:
-        raise HTTPException(
-            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail = f"Email sending failed: {str(e)}"
-        )
+    """Send verification code via MailerSend API"""
+    email_service = get_email_service()
+    email_service.send_verification_email(email, code, fname)
 
 
 def store_verification_code(user_id, code: str):
