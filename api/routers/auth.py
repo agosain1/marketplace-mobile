@@ -8,15 +8,14 @@ from dotenv import load_dotenv
 import os
 import random
 import string
-import emails
 from google.auth.transport import requests
 from google.oauth2 import id_token
-import uuid
 
 
 load_dotenv()
 
 from api.database import get_db_cursor
+from api.services.email_service import get_email_service
 
 
 router = APIRouter(
@@ -26,13 +25,6 @@ router = APIRouter(
 
 JWT_SECRET = os.getenv("JWT_SECRET_KEY")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
-
-# Email configuration
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-FROM_EMAIL = os.getenv("FROM_EMAIL", SMTP_USER)
 
 
 class Login(BaseModel):
@@ -76,7 +68,7 @@ def create_jwt_token(user_id: int, email: str) -> str:
     payload = {
         'uuid': user_id,
         'email': email,
-        'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7)
+        'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days = 7)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm = JWT_ALGORITHM)
 
@@ -108,89 +100,43 @@ def verify_jwt_token(authorization: Optional[str] = Header(None)):
 def verify_jwt_token_and_email(authorization: Optional[str] = Header(None)):
     """Verify JWT token and check if email is verified"""
     token_data = verify_jwt_token(authorization)
-    
+
     with get_db_cursor() as cur:
         cur.execute("SELECT email_verified FROM users WHERE id = %s", (token_data['uuid'],))
         user = cur.fetchone()
-        
+
         if not user or not user['email_verified']:
             raise HTTPException(
                 status_code = status.HTTP_403_FORBIDDEN,
                 detail = "Email verification required"
             )
-    
+
     return token_data
 
 
 def generate_verification_code() -> str:
     """Generate a 6-digit verification code"""
-    return ''.join(random.choices(string.digits, k=6))
+    return ''.join(random.choices(string.digits, k = 6))
 
 
 def send_verification_email(email: str, code: str, fname: str):
-    """Send verification code via email"""
-    if not SMTP_USER or not SMTP_PASSWORD:
-        raise HTTPException(
-            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail = "Email service not configured"
-        )
-    
-    subject = "Verify Your Account"
-    html_body = f"""
-    <html>
-        <body>
-            <h2>Welcome to Unimarket, {fname}!</h2>
-            <p>Your verification code is:</p>
-            <h1 style="color: #4CAF50; font-size: 36px; letter-spacing: 4px;">{code}</h1>
-            <p>This code will expire in 10 minutes.</p>
-            <p>If you didn't create an account, please ignore this email.</p>
-        </body>
-    </html>
-    """
-    
-    try:
-        message = emails.html(
-            html=html_body,
-            subject=subject,
-            mail_from=(FROM_EMAIL, "Marketplace"),
-            mail_to=email
-        )
-        
-        response = message.send(
-            smtp={
-                "host": SMTP_HOST,
-                "port": SMTP_PORT,
-                "user": SMTP_USER,
-                "password": SMTP_PASSWORD,
-                "tls": True
-            }
-        )
-        
-        if not response.status_code == 250:
-            raise HTTPException(
-                status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail = "Failed to send verification email"
-            )
-    except Exception as e:
-        raise HTTPException(
-            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail = f"Email sending failed: {str(e)}"
-        )
-
+    """Send verification code via MailerSend API"""
+    email_service = get_email_service()
+    email_service.send_verification_email(email, code, fname)
 
 def store_verification_code(user_id, code: str):
     """Store verification code in database"""
     with get_db_cursor() as cur:
-        expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=10)
+        expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes = 10)
         cur.execute("""
-            INSERT INTO verification_codes (user_id, code, expires_at)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (user_id)
-            DO UPDATE SET
-                code = EXCLUDED.code,
-                created_at = NOW(),
-                expires_at = EXCLUDED.expires_at
-        """, (user_id, code, expires_at))
+                    INSERT INTO verification_codes (user_id, code, expires_at)
+                    VALUES (%s, %s, %s) ON CONFLICT (user_id)
+            DO
+                    UPDATE SET
+                        code = EXCLUDED.code,
+                        created_at = NOW(),
+                        expires_at = EXCLUDED.expires_at
+                    """, (user_id, code, expires_at))
 
 
 @router.post('/login')
@@ -198,10 +144,12 @@ def login(login: Login):
     user = None
     user_info = None
     verification_code = None
-    
+
     with get_db_cursor() as cur:
         # Check if user exists
-        cur.execute("SELECT id, email, password, email_verified, google_id FROM users WHERE email = %s", (login.email,))
+        cur.execute(
+            "SELECT id, email, password, email_verified, google_id FROM users WHERE email = %s",
+            (login.email,))
         user = cur.fetchone()
 
         if not user:
@@ -236,19 +184,20 @@ def login(login: Login):
             # Get user's first name for email
             cur.execute("SELECT fname FROM users WHERE id = %s", (user['id'],))
             user_info = cur.fetchone()
-            
+
             # Generate and store new verification code
             verification_code = generate_verification_code()
-            expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=10)
+            expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+                minutes = 10)
             cur.execute("""
-                INSERT INTO verification_codes (user_id, code, expires_at)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (user_id)
-                DO UPDATE SET
-                    code = EXCLUDED.code,
-                    created_at = NOW(),
-                    expires_at = EXCLUDED.expires_at
-            """, (user['id'], verification_code, expires_at))
+                        INSERT INTO verification_codes (user_id, code, expires_at)
+                        VALUES (%s, %s, %s) ON CONFLICT (user_id)
+                DO
+                        UPDATE SET
+                            code = EXCLUDED.code,
+                            created_at = NOW(),
+                            expires_at = EXCLUDED.expires_at
+                        """, (user['id'], verification_code, expires_at))
 
         # If user is verified, create JWT token
         if user['email_verified']:
@@ -260,7 +209,7 @@ def login(login: Login):
                     "email": user['email']
                 }
             }
-    
+
     # Handle unverified user outside transaction
     if not user['email_verified']:
         # Send verification email after transaction is committed
@@ -283,7 +232,7 @@ def register(register: Register):
         if existing_user:
             raise HTTPException(
                 status_code = status.HTTP_400_BAD_REQUEST,
-                detail = "User with this email already exists"
+                detail = "User with this email already exists. Try using 'login' instead."
             )
 
         # Hash password
@@ -300,11 +249,11 @@ def register(register: Register):
 
         # Generate and store verification code in the same transaction
         verification_code = generate_verification_code()
-        expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=10)
+        expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes = 10)
         cur.execute("""
-            INSERT INTO verification_codes (user_id, code, expires_at)
-            VALUES (%s, %s, %s)
-        """, (new_user['id'], verification_code, expires_at))
+                    INSERT INTO verification_codes (user_id, code, expires_at)
+                    VALUES (%s, %s, %s)
+                    """, (new_user['id'], verification_code, expires_at))
 
     # Send verification email after transaction is committed
     send_verification_email(new_user['email'], verification_code, register.fname)
@@ -336,10 +285,12 @@ def verify_email(verify: VerifyEmail):
 
         # Verify code and delete if valid
         cur.execute("""
-            DELETE FROM verification_codes 
-            WHERE user_id = %s AND code = %s AND expires_at > NOW() 
-            RETURNING user_id
-        """, (user['id'], verify.code))
+                    DELETE
+                    FROM verification_codes
+                    WHERE user_id = %s
+                      AND code = %s
+                      AND expires_at > NOW() RETURNING user_id
+                    """, (user['id'], verify.code))
 
         if not cur.fetchone():
             raise HTTPException(
@@ -398,7 +349,7 @@ def resend_verification(resend: ResendCode):
 def delete_account(token_data: dict = Depends(verify_jwt_token)):
     """Delete user account and all associated data"""
     user_id = token_data['uuid']
-    
+
     # Import S3 service here to avoid circular imports
     try:
         from api.services.s3_service import get_s3_service
@@ -413,13 +364,14 @@ def delete_account(token_data: dict = Depends(verify_jwt_token)):
         if s3_available:
             cur.execute("SELECT images FROM listings WHERE seller_id = %s", (user_id,))
             listings_with_images = cur.fetchall()
-            
+
             for listing in listings_with_images:
                 if listing['images'] and isinstance(listing['images'], list):
                     # Filter out placeholder images, only delete S3 images
-                    s3_images = [url for url in listing['images'] if not url.startswith('https://placebear.com')]
+                    s3_images = [url for url in listing['images'] if
+                                 not url.startswith('https://placebear.com')]
                     all_image_urls.extend(s3_images)
-        
+
         # Delete all user's listings from database
         cur.execute("DELETE FROM listings WHERE seller_id = %s", (user_id,))
 
@@ -451,46 +403,48 @@ def google_signin(google_auth: GoogleAuth):
         GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
         if not GOOGLE_CLIENT_ID:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Google authentication not configured"
+                status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail = "Google authentication not configured"
             )
 
         # Verify the ID token with Google
         try:
             # Verify token with Google's servers
             idinfo = id_token.verify_oauth2_token(
-                google_auth.idToken, 
-                requests.Request(), 
+                google_auth.idToken,
+                requests.Request(),
                 GOOGLE_CLIENT_ID
             )
-            
+
             # Extract user information from verified token
             google_email = idinfo['email']
             google_sub = idinfo['sub']  # Google's unique user ID
             email_verified = idinfo.get('email_verified', False)
-            
+
             # Try to get name from token, fall back to profile data
             first_name = idinfo.get('given_name') or google_auth.profile.get('given_name', '')
             last_name = idinfo.get('family_name') or google_auth.profile.get('family_name', '')
-            
+
         except ValueError as e:
             # Invalid token
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid Google token: {str(e)}"
+                status_code = status.HTTP_401_UNAUTHORIZED,
+                detail = f"Invalid Google token: {str(e)}"
             )
 
         with get_db_cursor() as cur:
             # Check if user already exists by email
-            cur.execute("SELECT id, email, google_id, email_verified FROM users WHERE email = %s", (google_email,))
+            cur.execute("SELECT id, email, google_id, email_verified FROM users WHERE email = %s",
+                        (google_email,))
             existing_user = cur.fetchone()
 
             if existing_user:
                 # Update existing user with Google ID if not set
                 if not existing_user['google_id']:
-                    cur.execute("UPDATE users SET google_id = %s, email_verified = %s WHERE id = %s", 
-                              (google_sub, True, existing_user['id']))
-                
+                    cur.execute(
+                        "UPDATE users SET google_id = %s, email_verified = %s WHERE id = %s",
+                        (google_sub, True, existing_user['id']))
+
                 # Create JWT token for existing user
                 token = create_jwt_token(existing_user['id'], existing_user['email'])
                 return {
@@ -503,20 +457,20 @@ def google_signin(google_auth: GoogleAuth):
             else:
                 # Create new user account (let database auto-generate id)
                 cur.execute("""
-                    INSERT INTO users (fname, lname, email, google_id, email_verified, created_at)
-                    VALUES (%s, %s, %s, %s, %s, %s) 
-                    RETURNING id, email
-                """, (
-                    first_name or 'Google',
-                    last_name or 'User', 
-                    google_email,
-                    google_sub,
-                    True,  # Google accounts are pre-verified
-                    datetime.datetime.now(datetime.timezone.utc)
-                ))
+                            INSERT INTO users (fname, lname, email, google_id, email_verified,
+                                               created_at)
+                            VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, email
+                            """, (
+                                first_name or 'Google',
+                                last_name or 'User',
+                                google_email,
+                                google_sub,
+                                True,  # Google accounts are pre-verified
+                                datetime.datetime.now(datetime.timezone.utc)
+                            ))
 
                 new_user = cur.fetchone()
-                
+
                 # Create JWT token for new user
                 token = create_jwt_token(new_user['id'], new_user['email'])
                 return {
@@ -533,6 +487,6 @@ def google_signin(google_auth: GoogleAuth):
     except Exception as e:
         # Handle any other errors
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Google authentication failed: {str(e)}"
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail = f"Google authentication failed: {str(e)}"
         )
