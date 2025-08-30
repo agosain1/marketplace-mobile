@@ -3,6 +3,7 @@ FROM node:20-alpine as build-stage
 
 # Accept build argument for API URL (set via Railway environment variable)
 ARG VITE_API_URL
+ARG VITE_GOOGLE_CLIENT_ID
 
 # Set working directory
 WORKDIR /app
@@ -20,6 +21,7 @@ COPY . .
 
 # Set environment variable for build
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 
 # Build the application
 RUN npm run build
