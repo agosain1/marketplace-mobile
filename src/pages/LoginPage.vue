@@ -94,6 +94,25 @@
           />
         </q-form>
 
+        <!-- Divider -->
+        <div class="row items-center q-my-lg">
+          <div class="col">
+            <q-separator />
+          </div>
+          <div class="col-auto q-px-md text-grey-6">
+            OR
+          </div>
+          <div class="col">
+            <q-separator />
+          </div>
+        </div>
+
+        <!-- Google Sign-In -->
+        <GoogleSignIn 
+          @success="handleGoogleSignInSuccess" 
+          @error="handleGoogleSignInError"
+        />
+
         <div class="text-center q-mt-md">
           <q-btn
             flat
@@ -111,9 +130,13 @@
 <script>
 import axios from "axios"
 import { API_URL } from '../../constants.js'
+import GoogleSignIn from '../components/GoogleSignIn.vue'
 
 export default {
   name: "LoginPage",
+  components: {
+    GoogleSignIn
+  },
   data() {
     return {
       isLogin: true,
@@ -233,6 +256,38 @@ export default {
 
     goBack() {
       this.$router.back()
+    },
+
+    async handleGoogleSignInSuccess(googleData) {
+      this.loading = true
+      this.errorMessage = ''
+
+      try {
+        console.log('Google Sign-In successful:', googleData)
+        
+        // Send the Google ID token to our backend
+        const response = await axios.post(`${API_URL}auth/google`, {
+          idToken: googleData.idToken,
+          profile: googleData.profile
+        })
+
+        if (response.data.token) {
+          localStorage.setItem('auth_token', response.data.token)
+          localStorage.setItem('user', JSON.stringify(response.data.user))
+          console.log('Successfully signed in with Google!')
+          this.$router.push('/')
+        }
+      } catch (error) {
+        console.error('Google authentication error:', error)
+        this.errorMessage = error.response?.data?.detail || error.response?.data?.message || 'Google Sign-In failed'
+      } finally {
+        this.loading = false
+      }
+    },
+
+    handleGoogleSignInError(error) {
+      console.error('Google Sign-In error:', error)
+      this.errorMessage = `Google Sign-In failed: ${error}`
     }
   }
 }

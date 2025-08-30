@@ -23,78 +23,83 @@ class Listing(BaseModel):
     price: float
     category: str
     location: str
+    condition: str
     seller_id: str
 
 @router.post("")
-def create_listing(listing: Listing):
-    new_listing = (listing.title, listing.description, listing.price, 'USD', listing.category, listing.location,
-                   'new', 'active', 0, listing.seller_id, ["https://placebear.com/g/200/200"])
-    with get_db_cursor() as cur:
-        cur.execute(INSERT_COMMAND, new_listing)
-    return {"message": "Listing added successfully", "listing": new_listing}
-
-@router.post("/with-images")
-async def create_listing_with_images(
+async def create_listing(
     title: str = Form(...),
     description: str = Form(...),
     price: float = Form(...),
     category: str = Form(...),
     location: str = Form(...),
-    images: List[UploadFile] = File(...),
+    condition: str = Form(...),
+    images: Optional[List[UploadFile]] = File(None),
     token_data: dict = Depends(verify_jwt_token)
 ):
     seller_id = token_data['uuid']
     listing_id = str(uuid.uuid4())
+    image_urls = ["https://placebear.com/g/200/200"]  # Default placeholder
     
     try:
-        # Validate image files
-        allowed_extensions = {'jpg', 'jpeg', 'png', 'webp'}
-        max_file_size = 5 * 1024 * 1024  # 5MB
-        
-        image_urls = []
-        
-        for image in images:
-            # Check file size
-            if hasattr(image, 'size') and image.size > max_file_size:
-                raise HTTPException(
-                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    detail=f"Image {image.filename} is too large. Maximum size is 5MB."
-                )
+        # Handle image uploads if provided
+        if images and len(images) > 0 and images[0].filename:
+            # Validate image files
+            allowed_extensions = {'jpg', 'jpeg', 'png', 'webp'}
+            max_file_size = 5 * 1024 * 1024  # 5MB
             
-            # Check file extension
-            file_extension = image.filename.split('.')[-1].lower()
-            if file_extension not in allowed_extensions:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid file type. Allowed: {', '.join(allowed_extensions)}"
-                )
+            image_urls = []
             
-            # Read file content
-            file_content = await image.read()
-            
-            # Upload to S3
-            image_url = get_s3_service().upload_listing_image(file_content, file_extension, listing_id)
-            image_urls.append(image_url)
+            for image in images:
+                # Check file size
+                if hasattr(image, 'size') and image.size > max_file_size:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=f"Image {image.filename} is too large. Maximum size is 5MB."
+                    )
+                
+                # Check file extension
+                file_extension = image.filename.split('.')[-1].lower()
+                if file_extension not in allowed_extensions:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Invalid file type. Allowed: {', '.join(allowed_extensions)}"
+                    )
+                
+                # Read file content
+                file_content = await image.read()
+                
+                # Upload to S3
+                image_url = get_s3_service().upload_listing_image(file_content, file_extension, listing_id)
+                image_urls.append(image_url)
         
         # Insert listing into database
         new_listing = (
             title, description, price, 'USD', category, location,
-            'new', 'active', 0, seller_id, image_urls
+            condition, 'active', 0, seller_id, image_urls
         )
         
         with get_db_cursor() as cur:
             cur.execute(INSERT_COMMAND, new_listing)
         
-        return {
-            "message": "Listing created successfully with images",
-            "listing_id": listing_id,
-            "images": image_urls
+        response_data = {
+            "message": "Listing created successfully",
+            "listing_id": listing_id
         }
+        
+        # Add images to response if they were uploaded
+        if images and len(images) > 0 and images[0].filename:
+            response_data["images"] = image_urls
+        
+        return response_data
         
     except Exception as e:
         # Clean up any uploaded images if database insert fails
-        if 'image_urls' in locals():
-            get_s3_service().delete_listing_images(image_urls)
+        if 'image_urls' in locals() and images and len(images) > 0:
+            # Only clean up actual uploaded images, not placeholders
+            uploaded_images = [url for url in image_urls if not url.startswith('https://placebear.com')]
+            if uploaded_images:
+                get_s3_service().delete_listing_images(uploaded_images)
         
         if isinstance(e, HTTPException):
             raise e
@@ -117,6 +122,20 @@ def get_my_listings(token_data: dict = Depends(verify_jwt_token)):
         cur.execute("SELECT * FROM listings WHERE seller_id = %s", (user_id, ))
         response = cur.fetchall()
     return response
+
+@router.get("/{listing_id}")
+def get_listing(listing_id: str):
+    with get_db_cursor() as cur:
+        cur.execute("SELECT * FROM listings WHERE id = %s", (listing_id,))
+        listing = cur.fetchone()
+        
+        if not listing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Listing not found"
+            )
+        
+    return listing
 
 @router.delete("/{listing_id}")
 def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token)):

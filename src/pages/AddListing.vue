@@ -18,24 +18,37 @@
       <q-input v-model.number="price" label="Price" type="number" filled  name="price"/>
       <q-input v-model="category" label="Category" filled  name="category"/>
       <q-input v-model="location" label="Location" filled  name="location"/>
+      <q-select 
+        v-model="condition" 
+        :options="conditionOptions" 
+        label="Condition" 
+        filled 
+        emit-value 
+        map-options
+        name="condition"
+      />
       
       <!-- Image Upload Section -->
       <div class="q-mt-md">
         <q-label class="q-mb-sm">Images (Optional - up to 5 images, 5MB each)</q-label>
-        <q-file 
-          v-model="images" 
-          multiple 
-          accept="image/jpeg,image/jpg,image/png,image/webp"
-          max-files="5"
-          max-file-size="5242880"
-          filled
-          counter
-          @rejected="onImageRejected"
-        >
-          <template v-slot:prepend>
-            <q-icon name="attach_file" />
-          </template>
-        </q-file>
+        <div class="q-mt-sm">
+          <input
+            ref="fileInput"
+            type="file"
+            multiple
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            style="display: none"
+            @change="handleFileSelect"
+          />
+          <q-btn
+            @click="$refs.fileInput.click()"
+            icon="add_photo_alternate"
+            label="Choose Images"
+            color="primary"
+            outline
+            class="full-width"
+          />
+        </div>
         
         <!-- Image Previews -->
         <div v-if="imagePreviews.length > 0" class="q-mt-md">
@@ -108,11 +121,17 @@ const title = ref("")
 const description = ref("")
 const price = ref(null)
 const category = ref("")
-const location = ref ("")
+const location = ref("")
+const condition = ref("")
 const images = ref(null)
 const imagePreviews = ref([])
-//const condition = ref("")
-//const status = ref("")
+
+// Condition options
+const conditionOptions = [
+  { label: 'New', value: 'new' },
+  { label: 'Used', value: 'used' },
+  { label: 'Refurbished', value: 'refurbished' }
+]
 
 // Watch for image file changes to generate previews
 watch(images, (newImages) => {
@@ -133,16 +152,34 @@ watch(images, (newImages) => {
   }
 })
 
-function onImageRejected(rejectedEntries) {
-  rejectedEntries.forEach(entry => {
-    if (entry.failedPropValidation === 'max-file-size') {
-      message.value = `Image "${entry.file.name}" is too large. Maximum size is 5MB.`
-    } else if (entry.failedPropValidation === 'accept') {
-      message.value = `Image "${entry.file.name}" format not supported. Use JPG, PNG, or WebP.`
-    } else if (entry.failedPropValidation === 'max-files') {
-      message.value = 'Maximum 5 images allowed.'
+function handleFileSelect(event) {
+  const files = Array.from(event.target.files)
+  
+  // Validation
+  const maxFiles = 5
+  const maxFileSize = 5 * 1024 * 1024 // 5MB
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+  
+  if (files.length > maxFiles) {
+    message.value = `Maximum ${maxFiles} images allowed.`
+    return
+  }
+  
+  for (const file of files) {
+    if (file.size > maxFileSize) {
+      message.value = `Image "${file.name}" is too large. Maximum size is 5MB.`
+      return
     }
-  })
+    
+    if (!allowedTypes.includes(file.type)) {
+      message.value = `Image "${file.name}" format not supported. Use JPG, PNG, or WebP.`
+      return
+    }
+  }
+  
+  // Set images and clear any previous error message
+  images.value = files.length > 0 ? files : null
+  message.value = ""
 }
 
 function removeImage(index) {
@@ -156,7 +193,7 @@ function removeImage(index) {
 }
 
 async function addListing() {
-  if (!title.value || !description.value || !price.value || !category.value || !location.value ) {
+  if (!title.value || !description.value || !price.value || !category.value || !location.value || !condition.value) {
     message.value = "Please fill out all fields"
     return
   }
@@ -171,50 +208,34 @@ async function addListing() {
   try {
     message.value = "Creating listing..."
     
-    // Determine which endpoint to use based on whether images are provided
-    const hasImages = images.value && (Array.isArray(images.value) ? images.value.length > 0 : true)
+    // Use FormData for both with and without images
+    const formData = new FormData()
+    formData.append('title', title.value)
+    formData.append('description', description.value)
+    formData.append('price', price.value.toString())
+    formData.append('category', category.value)
+    formData.append('location', location.value)
+    formData.append('condition', condition.value)
     
-    if (hasImages) {
-      // Use FormData for file upload
-      const formData = new FormData()
-      formData.append('title', title.value)
-      formData.append('description', description.value)
-      formData.append('price', price.value.toString())
-      formData.append('category', category.value)
-      formData.append('location', location.value)
-      
-      // Add image files
+    // Add image files if provided
+    if (images.value && (Array.isArray(images.value) ? images.value.length > 0 : true)) {
       const files = Array.isArray(images.value) ? images.value : [images.value]
       files.forEach(file => {
         formData.append('images', file)
       })
-
-      const response = await axios.post(`${API_URL}listings/with-images`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      message.value = "Listing created successfully with images!"
-      console.log('Response:', response.data)
-    } else {
-      // Use regular JSON endpoint for listings without images
-      const userStr = localStorage.getItem('user')
-      const user = JSON.parse(userStr)
-      
-      const listingData = {
-        title: title.value,
-        description: description.value,
-        price: price.value,
-        category: category.value,
-        location: location.value,
-        seller_id: user.id
-      }
-      
-      await axios.post(`${API_URL}listings`, listingData)
-      message.value = "Listing created successfully!"
     }
+
+    const response = await axios.post(`${API_URL}listings`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    message.value = images.value && (Array.isArray(images.value) ? images.value.length > 0 : true) 
+      ? "Listing created successfully with images!" 
+      : "Listing created successfully!"
+    console.log('Response:', response.data)
     
     // Reset form
     title.value = ""
@@ -222,8 +243,15 @@ async function addListing() {
     price.value = null
     category.value = ""
     location.value = ""
+    condition.value = ""
     images.value = null
     imagePreviews.value = []
+    
+    // Reset file input
+    const fileInput = document.querySelector('input[type="file"]')
+    if (fileInput) {
+      fileInput.value = ""
+    }
     
   } catch (e) {
     console.error('Error creating listing:', e)
