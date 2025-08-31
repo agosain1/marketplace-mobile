@@ -53,6 +53,11 @@ class GoogleAuth(BaseModel):
     profile: dict
 
 
+class UpdateProfile(BaseModel):
+    firstName: str
+    lastName: str
+
+
 def hash_password(password: str) -> str:
     """Hash password using bcrypt"""
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -393,6 +398,57 @@ def delete_account(token_data: dict = Depends(verify_jwt_token)):
             print(f"Warning: Failed to delete some S3 images for deleted account: {str(e)}")
 
     return {"message": "Account successfully deleted"}
+
+
+@router.get('/profile')
+def get_profile(token_data: dict = Depends(verify_jwt_token)):
+    """Get user profile information"""
+    user_id = token_data['uuid']
+    
+    with get_db_cursor() as cur:
+        cur.execute("SELECT fname, lname, email, google_id FROM users WHERE id = %s", (user_id,))
+        user = cur.fetchone()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        return {
+            "firstName": user['fname'],
+            "lastName": user['lname'],
+            "email": user['email'],
+            "isGoogleUser": bool(user['google_id'])
+        }
+
+
+@router.put('/profile')
+def update_profile(profile_data: UpdateProfile, token_data: dict = Depends(verify_jwt_token)):
+    """Update user profile information"""
+    user_id = token_data['uuid']
+    
+    with get_db_cursor() as cur:
+        cur.execute(
+            "UPDATE users SET fname = %s, lname = %s WHERE id = %s RETURNING id, email",
+            (profile_data.firstName.strip(), profile_data.lastName.strip(), user_id)
+        )
+        
+        updated_user = cur.fetchone()
+        
+        if not updated_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+    
+    return {
+        "message": "Profile updated successfully",
+        "user": {
+            "id": str(updated_user['id']),
+            "email": updated_user['email']
+        }
+    }
 
 
 @router.post('/google')
