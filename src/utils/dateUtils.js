@@ -42,16 +42,3 @@ export function formatDate(dateString) {
     return 'Invalid date'
   }
 }
-
-/**
- * Get user's timezone for display purposes
- * @returns {string} User's timezone (e.g., "America/New_York")
- */
-export function getUserTimezone() {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone
-  } catch (error) {
-    console.error('Error getting user timezone:', error)
-    return 'UTC'
-  }
-}
