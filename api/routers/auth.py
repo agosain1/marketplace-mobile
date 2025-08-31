@@ -63,10 +63,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 
-def create_jwt_token(user_id: int, email: str) -> str:
+def create_jwt_token(user_id, email: str) -> str:
     """Create JWT token for user"""
     payload = {
-        'uuid': user_id,
+        'uuid': str(user_id),
         'email': email,
         'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days = 7)
     }
@@ -205,7 +205,7 @@ def login(login: Login):
             return {
                 "token": token,
                 "user": {
-                    "id": user['id'],
+                    "id": str(user['id']),
                     "email": user['email']
                 }
             }
@@ -308,7 +308,7 @@ def verify_email(verify: VerifyEmail):
             "message": "Email verified successfully",
             "token": token,
             "user": {
-                "id": user['id'],
+                "id": str(user['id']),
                 "email": verify.email
             }
         }
@@ -450,7 +450,7 @@ def google_signin(google_auth: GoogleAuth):
                 return {
                     "token": token,
                     "user": {
-                        "id": existing_user['id'],
+                        "id": str(existing_user['id']),
                         "email": existing_user['email']
                     }
                 }
@@ -476,7 +476,7 @@ def google_signin(google_auth: GoogleAuth):
                 return {
                     "token": token,
                     "user": {
-                        "id": new_user['id'],
+                        "id": str(new_user['id']),
                         "email": new_user['email']
                     }
                 }

@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 import os
-import psycopg2
+import psycopg
 
 # Load variables from .env
 load_dotenv()
@@ -14,7 +14,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 # Attempt connection
 if __name__ == '__main__':
     try:
-        conn = psycopg2.connect(
+        conn = psycopg.connect(
             host=DB_HOST,
             port=DB_PORT,
             dbname=DB_NAME,
