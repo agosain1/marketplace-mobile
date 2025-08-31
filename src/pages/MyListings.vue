@@ -107,8 +107,8 @@
                 <div class="text-subtitle2">{{ "Condition: " + listing.condition }}</div>
                 <div class="text-subtitle2">{{ "Status: " + listing.status }}</div>
                 <div class="text-subtitle2">{{ "Views: " + listing.views }}</div>
-                <div class="text-subtitle2">{{ "Created at: " + formatDate(listing.created_at) + " " + getTimezoneAbbreviation() }}</div>
-                <div class="text-subtitle2">{{ "Last updated: " + formatDate(listing.updated_at) + " " + getTimezoneAbbreviation() }}</div>
+                <div class="text-subtitle2">{{ "Created at: " + formatDate(listing.created_at) }}</div>
+                <div class="text-subtitle2">{{ "Last updated: " + formatDate(listing.updated_at) }}</div>
               </q-card-section>
               <q-card-actions align="right">
                 <q-btn
@@ -142,7 +142,7 @@
 <script>
 import axios from "axios"
 import { API_URL } from '../../constants.js'
-import { formatDate, getTimezoneAbbreviation } from '../utils/dateUtils.js'
+import { formatDate } from '../utils/dateUtils.js'
 
 
 export default {
@@ -254,8 +254,7 @@ export default {
     goToListing(listingId) {
       this.$router.push(`/listing/${listingId}`)
     },
-    formatDate,
-    getTimezoneAbbreviation
+    formatDate
   },
   mounted() {
     // Only fetch listings if user is logged in
