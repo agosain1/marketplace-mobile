@@ -108,10 +108,21 @@
               <div class="text-subtitle2">{{ "Condition: " + listing.condition }}</div>
               <div class="text-subtitle2">{{ "Status: " + listing.status }}</div>
               <div class="text-subtitle2">{{ "Views: " + listing.views }}</div>
+              <div class="text-subtitle2 text-weight-medium">{{ "Seller: " + (listing.seller_name || 'Unknown') }}</div>
               <div class="text-subtitle2">{{ "Created at: " + formatDate(listing.created_at) + " " + getTimezoneAbbreviation() }}</div>
               <div class="text-subtitle2">{{ "Last updated: " + formatDate(listing.updated_at) + " " + getTimezoneAbbreviation() }}</div>
 
             </q-card-section>
+            <q-card-actions align="right">
+              <q-btn
+                v-if="isLoggedIn && listing.seller_email !== currentUserEmail"
+                flat
+                color="primary"
+                icon="message"
+                label="Message Seller"
+                @click.stop="messageSeller(listing)"
+              />
+            </q-card-actions>
           </q-card>
         </div>
       </q-page>
@@ -133,6 +144,7 @@ export default {
       listings: [],
       imageSlides: {}, // Track current slide for each listing's carousel
       unreadCount: 0,
+      currentUserEmail: null,
     }
   },
   computed: {
@@ -204,12 +216,38 @@ export default {
     goToListing(listingId) {
       this.$router.push(`/listing/${listingId}`)
     },
+    messageSeller(listing) {
+      // Navigate to messages page and start a conversation with the seller
+      this.$router.push({
+        path: '/messages',
+        query: {
+          start_conversation: listing.seller_email,
+          seller_name: listing.seller_name
+        }
+      })
+    },
+    async getCurrentUser() {
+      if (!this.isLoggedIn) {
+        this.currentUserEmail = null
+        return
+      }
+
+      try {
+        const token = localStorage.getItem('auth_token')
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        this.currentUserEmail = payload.email
+      } catch (e) {
+        console.error("Error getting current user:", e)
+        this.currentUserEmail = null
+      }
+    },
     formatDate,
     getTimezoneAbbreviation
   },
   mounted() {
     this.getListings()             // fetch once on mount
     this.getUnreadCount()          // fetch unread count on mount
+    this.getCurrentUser()          // get current user info
 
     // Listen for message updates from other pages
     this.handleStorageChange = (e) => {
