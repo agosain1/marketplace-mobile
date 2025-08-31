@@ -5,6 +5,7 @@
         <q-btn flat dense round icon="menu" @click="leftDrawerOpen = !leftDrawerOpen" />
         <q-toolbar-title style="cursor: pointer" @click="goHome">Unimarket</q-toolbar-title>
         <q-btn v-if="!isLoggedIn" flat @click="goToLogin"> Login </q-btn>
+        <q-btn v-else flat dense round icon="message" @click="goToMessages" />
         <q-btn v-else flat dense round icon="account_circle" @click="goToAccount" />
         <q-btn flat dense round icon="add" @click="goToAddListing" />
       </q-toolbar>
@@ -17,6 +18,9 @@
         </q-item>
         <q-item clickable v-ripple @click="goToMyListings">
           <q-item-section>My Listings</q-item-section>
+        </q-item>
+        <q-item v-if="isLoggedIn" clickable v-ripple @click="goToMessages">
+          <q-item-section>Messages</q-item-section>
         </q-item>
       </q-list>
     </q-drawer>
@@ -153,6 +157,9 @@ export default {
     },
     goToMyListings() {
       this.$router.push('/my-listings')
+    },
+    goToMessages() {
+      this.$router.push('/messages')
     },
     goToListing(listingId) {
       this.$router.push(`/listing/${listingId}`)
