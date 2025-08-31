@@ -27,13 +27,13 @@
               >
                 <q-item-section avatar>
                   <q-avatar color="primary" text-color="white" size="40px">
-                    {{ conversation.other_user_email.charAt(0).toUpperCase() }}
+                    {{ (conversation.other_user_name || conversation.other_user_email).charAt(0).toUpperCase() }}
                   </q-avatar>
                 </q-item-section>
                 
                 <q-item-section>
                   <q-item-label class="text-weight-medium">
-                    {{ conversation.other_user_email }}
+                    {{ conversation.other_user_name || conversation.other_user_email }}
                   </q-item-label>
                   <q-item-label caption lines="1">
                     {{ conversation.last_message }}
@@ -83,9 +83,9 @@
               <!-- Chat Header -->
               <q-toolbar class="bg-grey-1">
                 <q-avatar color="primary" text-color="white" size="32px">
-                  {{ selectedConversation.charAt(0).toUpperCase() }}
+                  {{ (selectedConversationName || selectedConversation).charAt(0).toUpperCase() }}
                 </q-avatar>
-                <q-toolbar-title class="q-ml-sm">{{ selectedConversation }}</q-toolbar-title>
+                <q-toolbar-title class="q-ml-sm">{{ selectedConversationName || selectedConversation }}</q-toolbar-title>
               </q-toolbar>
               
               <!-- Messages Container -->
@@ -201,6 +201,7 @@ const $q = useQuasar()
 // Reactive data
 const conversations = ref([])
 const selectedConversation = ref(null)
+const selectedConversationName = ref(null)
 const currentMessages = ref([])
 const newMessage = ref('')
 const sendingMessage = ref(false)
@@ -246,10 +247,14 @@ const loadConversations = async () => {
       const otherUserEmail = message.sender_id === currentUserId.value 
         ? message.receiver_email 
         : message.sender_email
+      const otherUserName = message.sender_id === currentUserId.value 
+        ? message.receiver_name 
+        : message.sender_name
       
       if (!conversationMap.has(otherUserEmail)) {
         conversationMap.set(otherUserEmail, {
           other_user_email: otherUserEmail,
+          other_user_name: otherUserName,
           last_message: message.content,
           last_message_time: message.created_at,
           unread_count: 0
@@ -281,6 +286,9 @@ const loadConversations = async () => {
 
 const selectConversation = async (email) => {
   selectedConversation.value = email
+  // Find and set the conversation name
+  const conversation = conversations.value.find(conv => conv.other_user_email === email)
+  selectedConversationName.value = conversation ? (conversation.other_user_name || conversation.other_user_email) : email
   await loadConversation(email)
 }
 
