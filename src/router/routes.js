@@ -26,6 +26,10 @@ const routes = [
     path: '/my-listings',
     component: () => import('pages/MyListings.vue')
   },
+  {
+    path: '/messages',
+    component: () => import('pages/MessagesPage.vue')
+  },
 
   // Always leave this as last one,
   // but you can also remove it
