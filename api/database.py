@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 import os
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
+from psycopg.rows import dict_row
 from contextlib import contextmanager
 
 load_dotenv()
@@ -14,13 +14,13 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 def get_db_connection():
     """Returns a database connection"""
-    return psycopg2.connect(
+    return psycopg.connect(
         host=DB_HOST,
         port=DB_PORT,
         dbname=DB_NAME,
         user=DB_USER,
         password=DB_PASSWORD,
-        cursor_factory=RealDictCursor
+        row_factory=dict_row
     )
 
 @contextmanager

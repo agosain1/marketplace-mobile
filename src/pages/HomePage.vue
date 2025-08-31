@@ -119,7 +119,10 @@ export default {
     async getListings() {
       try {
         const res = await axios.get(`${API_URL}listings`)
-        this.listings = res.data
+        console.log("API response:", res.data) // Debug log
+        
+        // Ensure listings is always an array
+        this.listings = Array.isArray(res.data) ? res.data : []
 
         // Initialize image slides for each listing
         const slides = {}
@@ -129,6 +132,7 @@ export default {
         this.imageSlides = slides
       } catch (e) {
         console.error("Error fetching listings:", e)
+        this.listings = [] // Fallback to empty array on error
       }
     },
     goToAddListing() {
