@@ -193,10 +193,8 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from 'src/boot/axios'
-import { useQuasar } from 'quasar'
 
 const router = useRouter()
-const $q = useQuasar()
 
 // Reactive data
 const conversations = ref([])
@@ -277,10 +275,6 @@ const loadConversations = async () => {
 
   } catch (error) {
     console.error('Error loading conversations:', error)
-    $q.notify({
-      color: 'negative',
-      message: 'Failed to load conversations'
-    })
   }
 }
 
@@ -333,10 +327,6 @@ const loadConversation = async (email) => {
 
   } catch (error) {
     console.error('Error loading conversation:', error)
-    $q.notify({
-      color: 'negative',
-      message: 'Failed to load conversation'
-    })
   }
 }
 
@@ -371,10 +361,6 @@ const sendMessage = async () => {
 
   } catch (error) {
     console.error('Error sending message:', error)
-    $q.notify({
-      color: 'negative',
-      message: 'Failed to send message'
-    })
   } finally {
     sendingMessage.value = false
   }
@@ -407,17 +393,9 @@ const sendNewMessage = async () => {
     await loadConversations()
     await loadConversation(recipientEmail)
 
-    $q.notify({
-      color: 'positive',
-      message: 'Message sent successfully'
-    })
 
   } catch (error) {
     console.error('Error sending new message:', error)
-    $q.notify({
-      color: 'negative',
-      message: 'Failed to send message'
-    })
   } finally {
     sendingMessage.value = false
   }
