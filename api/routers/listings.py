@@ -13,8 +13,8 @@ router = APIRouter(
 )
 
 INSERT_COMMAND = """
-        INSERT INTO listings (title, description, price, currency, category, location, condition, status, views, seller_id, images)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO listings (title, description, price, currency, category, latitude, longitude, condition, status, views, seller_id, images)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
 
 class Listing(BaseModel):
@@ -22,7 +22,8 @@ class Listing(BaseModel):
     description: str
     price: float
     category: str
-    location: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     condition: str
     seller_id: str
 
@@ -32,7 +33,8 @@ async def create_listing(
     description: str = Form(...),
     price: float = Form(...),
     category: str = Form(...),
-    location: str = Form(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
     condition: str = Form(...),
     images: Optional[List[UploadFile]] = File(None),
     token_data: dict = Depends(verify_jwt_token_and_email)
@@ -73,9 +75,10 @@ async def create_listing(
                 image_url = get_s3_service().upload_listing_image(file_content, file_extension, listing_id)
                 image_urls.append(image_url)
         
+            
         # Insert listing into database
         new_listing = (
-            title, description, price, 'USD', category, location,
+            title, description, price, 'USD', category, latitude, longitude,
             condition, 'active', 0, seller_id, image_urls
         )
         
