@@ -151,6 +151,16 @@
 
                 <q-item>
                   <q-item-section avatar>
+                    <q-icon name="person" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Seller</q-item-label>
+                    <q-item-label caption>{{ listing.seller_name || 'Unknown' }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item>
+                  <q-item-section avatar>
                     <q-icon name="schedule" />
                   </q-item-section>
                   <q-item-section>
@@ -170,10 +180,30 @@
                 </q-item>
               </q-list>
             </q-card-section>
+
+            <!-- Actions -->
+            <q-card-actions align="right">
+              <q-btn
+                v-if="isLoggedIn && listing.seller_email !== currentUserEmail"
+                color="primary"
+                icon="message"
+                label="Message Seller"
+                @click="messageSeller"
+                class="q-ma-sm"
+              />
+            </q-card-actions>
           </q-card>
         </div>
       </q-page>
     </q-page-container>
+
+    <!-- Message Seller Dialog -->
+    <MessageSellerDialog
+      v-model="showMessageDialog"
+      :seller="selectedSeller"
+      :listing="selectedListing"
+      @message-sent="onMessageSent"
+    />
   </q-layout>
 </template>
 
@@ -181,15 +211,23 @@
 import axios from "axios"
 import { API_URL } from '../../constants.js'
 import { formatDate } from '../utils/dateUtils.js'
+import MessageSellerDialog from 'src/components/MessageSellerDialog.vue'
 
 export default {
   name: "ListingDetail",
+  components: {
+    MessageSellerDialog
+  },
   data() {
     return {
       listing: null,
       loading: true,
       error: null,
       currentSlide: 0,
+      currentUserEmail: null,
+      showMessageDialog: false,
+      selectedSeller: {},
+      selectedListing: {},
     }
   },
   computed: {
@@ -228,10 +266,45 @@ export default {
     goToAccount() {
       this.$router.push('/account')
     },
-    formatDate
+    messageSeller() {
+      if (!this.listing) return
+
+      // Set up dialog data and show it
+      this.selectedSeller = {
+        name: this.listing.seller_name,
+        email: this.listing.seller_email
+      }
+      this.selectedListing = {
+        title: this.listing.title,
+        price: this.listing.price,
+        currency: this.listing.currency
+      }
+      this.showMessageDialog = true
+    },
+    onMessageSent() {
+      // Handle successful message sent
+      // Could show additional feedback or update UI
+    },
+    async getCurrentUser() {
+      if (!this.isLoggedIn) {
+        this.currentUserEmail = null
+        return
+      }
+
+      try {
+        const token = localStorage.getItem('auth_token')
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        this.currentUserEmail = payload.email
+      } catch (e) {
+        console.error("Error getting current user:", e)
+        this.currentUserEmail = null
+      }
+    },
+    formatDate,
   },
   mounted() {
     this.fetchListing()
+    this.getCurrentUser()
   },
   watch: {
     '$route.params.id'() {

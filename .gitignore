@@ -51,6 +51,8 @@ docker-compose.override.yml
 api/__pycache__/
 api/*.pyc
 api/*.pyo
+api/routers/__pycache__/
+api/services/__pycache__/
 
 # Railway deployment files (local helpers, not needed in Git)
 railway-deploy.sh
