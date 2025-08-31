@@ -102,7 +102,7 @@ def search_location(query):
         return us_result
     
     # Fall back to Mapbox API for international locations or unmatched queries
-    """url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{query}.json?access_token={token}&limit=1"
+    url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{query}.json?access_token={token}&limit=1"
     res = requests.get(url)
     
     if res.status_code != 200:
@@ -119,7 +119,7 @@ def search_location(query):
             "latitude": lat,
             "longitude": lon,
             "place_name": place_name
-        }"""
+        }
     
     return None
 
