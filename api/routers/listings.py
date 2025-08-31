@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from api.database import get_db_cursor
-from .auth import verify_jwt_token
+from .auth import verify_jwt_token_and_email
 from fastapi import HTTPException, status
 from api.services.s3_service import get_s3_service
 from typing import List, Optional
@@ -35,7 +35,7 @@ async def create_listing(
     location: str = Form(...),
     condition: str = Form(...),
     images: Optional[List[UploadFile]] = File(None),
-    token_data: dict = Depends(verify_jwt_token)
+    token_data: dict = Depends(verify_jwt_token_and_email)
 ):
     seller_id = token_data['uuid']
     listing_id = str(uuid.uuid4())
@@ -116,7 +116,7 @@ def get_listings():
     return response
 
 @router.get("/my_listings")
-def get_my_listings(token_data: dict = Depends(verify_jwt_token)):
+def get_my_listings(token_data: dict = Depends(verify_jwt_token_and_email)):
     user_id = token_data['uuid']
     with get_db_cursor() as cur:
         cur.execute("SELECT * FROM listings WHERE seller_id = %s", (user_id, ))
@@ -138,7 +138,7 @@ def get_listing(listing_id: str):
     return listing
 
 @router.delete("/{listing_id}")
-def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token)):
+def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token_and_email)):
     user_id = token_data['uuid']
     
     with get_db_cursor() as cur:
@@ -152,8 +152,8 @@ def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token)
                 detail="Listing not found"
             )
         
-        # Check if the user owns this listing
-        if listing['seller_id'] != user_id:
+        # Check if the user owns this listing (convert both to strings for comparison)
+        if str(listing['seller_id']) != str(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only delete your own listings"
