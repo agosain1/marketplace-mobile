@@ -190,7 +190,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from 'src/boot/axios'
 import { useQuasar } from 'quasar'
@@ -312,6 +312,11 @@ const loadConversation = async (email) => {
       }
     }
     
+    // Trigger unread count update on other pages
+    if (unreadMessages.length > 0) {
+      localStorage.setItem('messages_updated', Date.now().toString())
+    }
+    
     // Scroll to bottom
     await nextTick()
     if (messagesScrollArea.value) {
@@ -374,7 +379,7 @@ const sendNewMessage = async () => {
   
   try {
     const token = localStorage.getItem('auth_token')
-    const response = await api.post('/messages/send', {
+    await api.post('/messages/send', {
       receiver_email: newMessageEmail.value.trim(),
       content: newMessageContent.value.trim()
     }, {
@@ -383,14 +388,16 @@ const sendNewMessage = async () => {
       }
     })
     
+    const recipientEmail = newMessageEmail.value.trim()
+    
     showNewMessageDialog.value = false
     newMessageEmail.value = ''
     newMessageContent.value = ''
     
     // Select the new conversation
-    selectedConversation.value = newMessageEmail.value
+    selectedConversation.value = recipientEmail
     await loadConversations()
-    await loadConversation(newMessageEmail.value)
+    await loadConversation(recipientEmail)
     
     $q.notify({
       color: 'positive',
