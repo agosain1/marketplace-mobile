@@ -30,28 +30,53 @@
             :loading="gettingLocation"
             class="q-mb-md full-width"
           />
-          
-          <!-- Location Search -->
-          <q-input
-            v-model="locationSearch"
-            label="Search city or zipcode"
-            outlined
-            dense
-            clearable
-            @keyup.enter="searchLocation"
-            class="q-mb-md"
-          >
-            <template v-slot:append>
-              <q-btn 
-                flat 
-                round 
-                dense 
-                icon="search" 
-                @click="searchLocation"
-                :loading="searchingLocation"
-              />
-            </template>
-          </q-input>
+
+          <!-- Location Search with Autocomplete -->
+          <div class="relative-position">
+            <q-input
+              v-model="locationSearch"
+              label="Search city or zipcode"
+              outlined
+              dense
+              clearable
+              @keyup.enter="searchLocation"
+              @update:model-value="onLocationInput"
+              @focus="onInputFocus"
+              @blur="hideSuggestions"
+              class="q-mb-md"
+            >
+              <template v-slot:append>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="search"
+                  @click="searchLocation"
+                  :loading="searchingLocation"
+                />
+              </template>
+            </q-input>
+
+            <!-- Autocomplete Suggestions -->
+            <q-list
+              v-if="showSuggestions && locationSuggestions.length > 0"
+              class="absolute z-max bg-white shadow-4 rounded-borders"
+              style="width: 100%; top: 100%; left: 0;"
+            >
+              <q-item
+                v-for="suggestion in locationSuggestions"
+                :key="suggestion.value"
+                clickable
+                @click="selectSuggestion(suggestion)"
+                class="q-px-md q-py-sm"
+              >
+                <q-item-section>
+                  <q-item-label>{{ suggestion.display }}</q-item-label>
+                  <q-item-label caption>{{ suggestion.type === 'zipcode' ? 'Zipcode' : 'City' }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
         </div>
         <div class="q-mb-md column">
           <q-banner class="bg-positive text-white q-mb-sm" rounded>
@@ -192,6 +217,8 @@ const locationDisplay = ref("37.7749, -122.4194") // Default coordinate display
 const gettingLocation = ref(false)
 const locationSearch = ref("")
 const searchingLocation = ref(false)
+const locationSuggestions = ref([])
+const showSuggestions = ref(false)
 
 // Condition options
 const conditionOptions = [
@@ -366,21 +393,21 @@ async function onMapLocationChanged(coordinates) {
 
 async function searchLocation() {
   if (!locationSearch.value.trim()) return
-  
+
   searchingLocation.value = true
-  
+
   try {
     const response = await axios.get(`${API_URL}listings/search-location/${encodeURIComponent(locationSearch.value.trim())}`)
-    
+
     if (response.data) {
       latitude.value = response.data.latitude
       longitude.value = response.data.longitude
       locationDisplay.value = response.data.place_name || `${response.data.latitude.toFixed(4)}, ${response.data.longitude.toFixed(4)}`
-      
+
       message.value = ""
       locationSearch.value = ""
     }
-    
+
   } catch (error) {
     console.error('Error searching location:', error)
     if (error.response?.status === 404) {
@@ -391,6 +418,55 @@ async function searchLocation() {
   } finally {
     searchingLocation.value = false
   }
+}
+
+// Autocomplete functions
+let searchTimeout = null
+
+async function onLocationInput() {
+  if (searchTimeout) clearTimeout(searchTimeout)
+
+  const query = locationSearch.value?.trim()
+
+  if (!query || query.length < 2) {
+    locationSuggestions.value = []
+    showSuggestions.value = false
+    return
+  }
+
+  searchTimeout = setTimeout(async () => {
+    try {
+      const response = await axios.get(`${API_URL}listings/location-suggestions/${encodeURIComponent(query)}`)
+      locationSuggestions.value = response.data.suggestions || []
+      showSuggestions.value = locationSuggestions.value.length > 0
+    } catch (error) {
+      console.error('Error fetching suggestions:', error)
+      locationSuggestions.value = []
+      showSuggestions.value = false
+    }
+  }, 300)
+}
+
+function selectSuggestion(suggestion) {
+  latitude.value = suggestion.latitude
+  longitude.value = suggestion.longitude
+  locationDisplay.value = suggestion.place_name
+  locationSearch.value = ""
+  locationSuggestions.value = []
+  showSuggestions.value = false
+  message.value = ""
+}
+
+function onInputFocus() {
+  if (locationSuggestions.value.length > 0) {
+    showSuggestions.value = true
+  }
+}
+
+function hideSuggestions() {
+  setTimeout(() => {
+    showSuggestions.value = false
+  }, 200)
 }
 
 function goBack() {

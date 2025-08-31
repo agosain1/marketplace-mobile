@@ -43,16 +43,43 @@ def search_us_zipcode_db(query):
             )
         else:
             # Search by city name (case insensitive)
-            cur.execute(
-                """
-                SELECT zipcode, city, state, state_code, latitude, longitude 
-                FROM us_zipcodes 
-                WHERE LOWER(city) = LOWER(%s) 
-                ORDER BY zipcode 
-                LIMIT 1
-                """,
-                (query,)
-            )
+            if ',' in query:
+                # city, state
+                query = query.split(',')
+                city = query[0].strip()
+                state = query[1].strip()
+                # state abbreviation
+                if len(state) < 3:
+                    cur.execute(
+                        """
+                        SELECT zipcode, city, state, state_code, latitude, longitude 
+                        FROM us_zipcodes 
+                        WHERE LOWER(city) = LOWER(%s) AND LOWER(state_code) = LOWER(%s) 
+                        ORDER BY zipcode DESC LIMIT 1
+                        """,
+                        (city, state)
+                    )
+                # full state name
+                else:
+                    cur.execute(
+                        """
+                        SELECT zipcode, city, state, state_code, latitude, longitude
+                        FROM us_zipcodes
+                        WHERE LOWER(city) = LOWER(%s) AND LOWER(state) = LOWER(%s)
+                        ORDER BY zipcode DESC LIMIT 1
+                        """,
+                        (city, state)
+                    )
+            else:
+                cur.execute(
+                    """
+                    SELECT zipcode, city, state, state_code, latitude, longitude
+                    FROM us_zipcodes
+                    WHERE LOWER(city) = LOWER(%s)
+                    ORDER BY zipcode DESC LIMIT 1
+                    """,
+                    (query,)
+                )
         
         result = cur.fetchone()
         if result:
@@ -95,3 +122,60 @@ def search_location(query):
         }"""
     
     return None
+
+def search_location_suggestions(query, limit=5):
+    """
+    Get location suggestions for autocomplete from US zipcode database
+    """
+    if not query or len(query) < 2:
+        return []
+    
+    with get_db_cursor() as cur:
+        suggestions = []
+        
+        # Search for zipcodes starting with query
+        if query.isdigit():
+            cur.execute(
+                """
+                SELECT DISTINCT zipcode, city, state_code, latitude, longitude 
+                FROM us_zipcodes 
+                WHERE zipcode LIKE %s 
+                ORDER BY zipcode 
+                LIMIT %s
+                """,
+                (f"{query}%", limit)
+            )
+            results = cur.fetchall()
+            for result in results:
+                suggestions.append({
+                    "type": "zipcode",
+                    "display": f"{result['zipcode']} - {result['city']}, {result['state_code']}",
+                    "value": result['zipcode'],
+                    "latitude": float(result['latitude']),
+                    "longitude": float(result['longitude']),
+                    "place_name": f"{result['city']}, {result['state_code']}"
+                })
+        else:
+            # Search for cities starting with query - get one representative location per city/state
+            cur.execute(
+                """
+                SELECT DISTINCT ON (city, state_code) city, state_code, latitude, longitude 
+                FROM us_zipcodes 
+                WHERE LOWER(city) LIKE LOWER(%s) 
+                ORDER BY city, state_code, zipcode 
+                LIMIT %s
+                """,
+                (f"{query}%", limit)
+            )
+            results = cur.fetchall()
+            for result in results:
+                suggestions.append({
+                    "type": "city",
+                    "display": f"{result['city']}, {result['state_code']}",
+                    "value": f"{result['city']}, {result['state_code']}",
+                    "latitude": float(result['latitude']),
+                    "longitude": float(result['longitude']),
+                    "place_name": f"{result['city']}, {result['state_code']}"
+                })
+    
+    return suggestions
