@@ -111,7 +111,17 @@ async def create_listing(
 @router.get("")
 def get_listings():
     with get_db_cursor() as cur:
-        cur.execute("SELECT * FROM listings")
+        cur.execute(
+            """
+            SELECT 
+                l.*,
+                CONCAT(u.fname, ' ', u.lname) as seller_name,
+                u.email as seller_email
+            FROM listings l
+            JOIN users u ON l.seller_id = u.id
+            ORDER BY l.created_at DESC
+            """
+        )
         response = cur.fetchall()
     return response
 
@@ -126,7 +136,18 @@ def get_my_listings(token_data: dict = Depends(verify_jwt_token_and_email)):
 @router.get("/{listing_id}")
 def get_listing(listing_id: str):
     with get_db_cursor() as cur:
-        cur.execute("SELECT * FROM listings WHERE id = %s", (listing_id,))
+        cur.execute(
+            """
+            SELECT 
+                l.*,
+                CONCAT(u.fname, ' ', u.lname) as seller_name,
+                u.email as seller_email
+            FROM listings l
+            JOIN users u ON l.seller_id = u.id
+            WHERE l.id = %s
+            """,
+            (listing_id,)
+        )
         listing = cur.fetchone()
         
         if not listing:

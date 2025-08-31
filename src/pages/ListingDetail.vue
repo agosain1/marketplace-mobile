@@ -151,6 +151,16 @@
 
                 <q-item>
                   <q-item-section avatar>
+                    <q-icon name="person" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Seller</q-item-label>
+                    <q-item-label caption>{{ listing.seller_name || 'Unknown' }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item>
+                  <q-item-section avatar>
                     <q-icon name="schedule" />
                   </q-item-section>
                   <q-item-section>
@@ -170,6 +180,18 @@
                 </q-item>
               </q-list>
             </q-card-section>
+            
+            <!-- Actions -->
+            <q-card-actions align="right">
+              <q-btn
+                v-if="isLoggedIn && listing.seller_email !== currentUserEmail"
+                color="primary"
+                icon="message"
+                label="Message Seller"
+                @click="messageSeller"
+                class="q-ma-sm"
+              />
+            </q-card-actions>
           </q-card>
         </div>
       </q-page>
@@ -190,6 +212,7 @@ export default {
       loading: true,
       error: null,
       currentSlide: 0,
+      currentUserEmail: null,
     }
   },
   computed: {
@@ -228,11 +251,39 @@ export default {
     goToAccount() {
       this.$router.push('/account')
     },
+    messageSeller() {
+      if (!this.listing) return
+      
+      // Navigate to messages page and start a conversation with the seller
+      this.$router.push({
+        path: '/messages',
+        query: {
+          start_conversation: this.listing.seller_email,
+          seller_name: this.listing.seller_name
+        }
+      })
+    },
+    async getCurrentUser() {
+      if (!this.isLoggedIn) {
+        this.currentUserEmail = null
+        return
+      }
+
+      try {
+        const token = localStorage.getItem('auth_token')
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        this.currentUserEmail = payload.email
+      } catch (e) {
+        console.error("Error getting current user:", e)
+        this.currentUserEmail = null
+      }
+    },
     formatDate,
     getTimezoneAbbreviation
   },
   mounted() {
     this.fetchListing()
+    this.getCurrentUser()
   },
   watch: {
     '$route.params.id'() {

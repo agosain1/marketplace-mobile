@@ -457,6 +457,20 @@ onMounted(async () => {
   }
   
   await loadConversations()
+  
+  // Check if we should start a new conversation from query params
+  const route = router.currentRoute.value
+  if (route.query.start_conversation) {
+    const sellerEmail = route.query.start_conversation
+    const sellerName = route.query.seller_name
+    
+    // Open the new message dialog with pre-filled seller email
+    newMessageEmail.value = sellerEmail
+    showNewMessageDialog.value = true
+    
+    // Clear the query params to avoid re-opening on refresh
+    router.replace({ path: '/messages' })
+  }
 })
 </script>
 
