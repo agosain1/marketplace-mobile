@@ -17,17 +17,49 @@
       <q-input v-model="description" label="Description" filled type="textarea"  name="description"/>
       <q-input v-model.number="price" label="Price" type="number" filled  name="price"/>
       <q-input v-model="category" label="Category" filled  name="category"/>
-      <q-input v-model="location" label="Location" filled  name="location"/>
-      <q-select 
-        v-model="condition" 
-        :options="conditionOptions" 
-        label="Condition" 
-        filled 
-        emit-value 
+      <!-- Location Section -->
+      <div class="q-mb-md">
+        <q-label class="q-mb-sm">Location</q-label>
+        <div v-if="!latitude || !longitude" class="column">
+          <q-btn
+            @click="getCurrentLocation"
+            icon="my_location"
+            label="Use Current Location"
+            color="primary"
+            outline
+            :loading="gettingLocation"
+            class="full-width"
+          />
+          <div class="text-caption text-grey-6 q-mt-sm text-center">
+            Location access is required to create listings
+          </div>
+        </div>
+        <div v-else class="column">
+          <q-banner class="bg-positive text-white q-mb-sm" rounded>
+            <template v-slot:avatar>
+              <q-icon name="location_on" />
+            </template>
+            Location set: {{ locationDisplay }}
+          </q-banner>
+          <q-btn
+            @click="clearLocation"
+            icon="clear"
+            label="Change Location"
+            flat
+            size="sm"
+          />
+        </div>
+      </div>
+      <q-select
+        v-model="condition"
+        :options="conditionOptions"
+        label="Condition"
+        filled
+        emit-value
         map-options
         name="condition"
       />
-      
+
       <!-- Image Upload Section -->
       <div class="q-mt-md">
         <q-label class="q-mb-sm">Images (Optional - up to 5 images, 5MB each)</q-label>
@@ -49,14 +81,14 @@
             class="full-width"
           />
         </div>
-        
+
         <!-- Image Previews -->
         <div v-if="imagePreviews.length > 0" class="q-mt-md">
           <q-label class="q-mb-sm">Image Previews:</q-label>
           <div class="row q-gutter-sm">
-            <div 
-              v-for="(preview, index) in imagePreviews" 
-              :key="index" 
+            <div
+              v-for="(preview, index) in imagePreviews"
+              :key="index"
               class="col-auto"
             >
               <q-img
@@ -104,6 +136,7 @@ import { ref, onMounted, watch } from "vue"
 import { useRouter } from "vue-router"
 import axios from "axios"
 import { API_URL } from '../../constants.js'
+import { locationService } from '../services/locationService.js'
 
 const router = useRouter()
 
@@ -125,6 +158,13 @@ const location = ref("")
 const condition = ref("")
 const images = ref(null)
 const imagePreviews = ref([])
+
+// Location state
+const latitude = ref(null)
+const longitude = ref(null)
+const manualLocation = ref("")
+const locationDisplay = ref("")
+const gettingLocation = ref(false)
 
 // Condition options
 const conditionOptions = [
@@ -154,29 +194,29 @@ watch(images, (newImages) => {
 
 function handleFileSelect(event) {
   const files = Array.from(event.target.files)
-  
+
   // Validation
   const maxFiles = 5
   const maxFileSize = 5 * 1024 * 1024 // 5MB
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-  
+
   if (files.length > maxFiles) {
     message.value = `Maximum ${maxFiles} images allowed.`
     return
   }
-  
+
   for (const file of files) {
     if (file.size > maxFileSize) {
       message.value = `Image "${file.name}" is too large. Maximum size is 5MB.`
       return
     }
-    
+
     if (!allowedTypes.includes(file.type)) {
       message.value = `Image "${file.name}" format not supported. Use JPG, PNG, or WebP.`
       return
     }
   }
-  
+
   // Set images and clear any previous error message
   images.value = files.length > 0 ? files : null
   message.value = ""
@@ -193,8 +233,8 @@ function removeImage(index) {
 }
 
 async function addListing() {
-  if (!title.value || !description.value || !price.value || !category.value || !location.value || !condition.value) {
-    message.value = "Please fill out all fields"
+  if (!title.value || !description.value || !price.value || !category.value || !latitude.value || !longitude.value || !condition.value) {
+    message.value = "Please fill out all fields and allow location access"
     return
   }
 
@@ -207,16 +247,19 @@ async function addListing() {
 
   try {
     message.value = "Creating listing..."
-    
+
     // Use FormData for both with and without images
     const formData = new FormData()
     formData.append('title', title.value)
     formData.append('description', description.value)
     formData.append('price', price.value.toString())
     formData.append('category', category.value)
-    formData.append('location', location.value)
     formData.append('condition', condition.value)
-    
+
+    // Add GPS coordinates
+    formData.append('latitude', latitude.value.toString())
+    formData.append('longitude', longitude.value.toString())
+
     // Add image files if provided
     if (images.value && (Array.isArray(images.value) ? images.value.length > 0 : true)) {
       const files = Array.isArray(images.value) ? images.value : [images.value]
@@ -231,12 +274,12 @@ async function addListing() {
         'Authorization': `Bearer ${token}`
       }
     })
-    
-    message.value = images.value && (Array.isArray(images.value) ? images.value.length > 0 : true) 
-      ? "Listing created successfully with images!" 
+
+    message.value = images.value && (Array.isArray(images.value) ? images.value.length > 0 : true)
+      ? "Listing created successfully with images!"
       : "Listing created successfully!"
     console.log('Response:', response.data)
-    
+
     // Reset form
     title.value = ""
     description.value = ""
@@ -246,17 +289,49 @@ async function addListing() {
     condition.value = ""
     images.value = null
     imagePreviews.value = []
-    
+
+    // Reset location
+    clearLocation()
+
     // Reset file input
     const fileInput = document.querySelector('input[type="file"]')
     if (fileInput) {
       fileInput.value = ""
     }
-    
+
   } catch (e) {
     console.error('Error creating listing:', e)
     message.value = `Error creating listing: ${e.response?.data?.detail || e.message}`
   }
+}
+
+// Location methods
+async function getCurrentLocation() {
+  gettingLocation.value = true
+  try {
+    const position = await locationService.getCurrentPosition()
+    latitude.value = position.latitude
+    longitude.value = position.longitude
+
+    // Get human-readable location name
+    locationDisplay.value = await locationService.getLocationName(
+      position.latitude,
+      position.longitude
+    )
+
+    message.value = ""
+  } catch (error) {
+    message.value = error.message
+  } finally {
+    gettingLocation.value = false
+  }
+}
+
+function clearLocation() {
+  latitude.value = null
+  longitude.value = null
+  locationDisplay.value = ""
+  manualLocation.value = ""
 }
 
 function goBack() {
