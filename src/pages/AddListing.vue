@@ -41,6 +41,20 @@
             </template>
             Location set: {{ locationDisplay }}
           </q-banner>
+
+          <!-- Interactive Map -->
+          <div class="q-mb-sm">
+            <q-label class="q-mb-xs text-subtitle2">Adjust location on map:</q-label>
+            <LocationMap
+              :latitude="latitude"
+              :longitude="longitude"
+              @location-changed="onMapLocationChanged"
+            />
+            <div class="text-caption text-grey-6 q-mt-xs">
+              Click or drag the marker to adjust the exact location
+            </div>
+          </div>
+
           <q-btn
             @click="clearLocation"
             icon="clear"
@@ -137,6 +151,7 @@ import { useRouter } from "vue-router"
 import axios from "axios"
 import { API_URL } from '../../constants.js'
 import { locationService } from '../services/locationService.js'
+import LocationMap from '../components/LocationMap.vue'
 
 const router = useRouter()
 
@@ -332,6 +347,22 @@ function clearLocation() {
   longitude.value = null
   locationDisplay.value = ""
   manualLocation.value = ""
+}
+
+async function onMapLocationChanged(coordinates) {
+  latitude.value = coordinates.latitude
+  longitude.value = coordinates.longitude
+
+  // Update the location display
+  try {
+    locationDisplay.value = await locationService.getLocationName(
+      coordinates.latitude,
+      coordinates.longitude
+    )
+  } catch (error) {
+    console.log(error)
+    locationDisplay.value = `${coordinates.latitude.toFixed(4)}, ${coordinates.longitude.toFixed(4)}`
+  }
 }
 
 function goBack() {

@@ -4,6 +4,7 @@ from api.database import get_db_cursor
 from .auth import verify_jwt_token_and_email
 from fastapi import HTTPException, status
 from api.services.s3_service import get_s3_service
+from api.services.location_service import get_location_from_coords
 from typing import List, Optional
 import uuid
 
@@ -13,8 +14,8 @@ router = APIRouter(
 )
 
 INSERT_COMMAND = """
-        INSERT INTO listings (title, description, price, currency, category, latitude, longitude, condition, status, views, seller_id, images)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO listings (title, description, price, currency, category, latitude, longitude, condition, status, views, seller_id, images, location)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
 
 class Listing(BaseModel):
@@ -75,11 +76,12 @@ async def create_listing(
                 image_url = get_s3_service().upload_listing_image(file_content, file_extension, listing_id)
                 image_urls.append(image_url)
         
-            
+
+        location = get_location_from_coords(latitude, longitude)
         # Insert listing into database
         new_listing = (
             title, description, price, 'USD', category, latitude, longitude,
-            condition, 'active', 0, seller_id, image_urls
+            condition, 'active', 0, seller_id, image_urls, location
         )
         
         with get_db_cursor() as cur:
