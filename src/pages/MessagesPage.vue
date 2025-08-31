@@ -15,7 +15,7 @@
           <div class="col-12 col-md-4">
             <q-list bordered separator class="full-height">
               <q-item-label header>Conversations</q-item-label>
-              
+
               <q-item
                 v-for="conversation in conversations"
                 :key="conversation.other_user_email"
@@ -30,7 +30,7 @@
                     {{ (conversation.other_user_name || conversation.other_user_email).charAt(0).toUpperCase() }}
                   </q-avatar>
                 </q-item-section>
-                
+
                 <q-item-section>
                   <q-item-label class="text-weight-medium">
                     {{ conversation.other_user_name || conversation.other_user_email }}
@@ -39,7 +39,7 @@
                     {{ conversation.last_message }}
                   </q-item-label>
                 </q-item-section>
-                
+
                 <q-item-section side>
                   <div class="column items-end">
                     <q-item-label caption>
@@ -55,9 +55,9 @@
                   </div>
                 </q-item-section>
               </q-item>
-              
+
               <q-separator />
-              
+
               <!-- New Message Button -->
               <q-item clickable v-ripple @click="showNewMessageDialog = true">
                 <q-item-section avatar>
@@ -78,7 +78,7 @@
                 <div class="text-h6 text-grey-6 q-mt-md">Select a conversation to start messaging</div>
               </div>
             </div>
-            
+
             <div v-else class="column full-height">
               <!-- Chat Header -->
               <q-toolbar class="bg-grey-1">
@@ -87,7 +87,7 @@
                 </q-avatar>
                 <q-toolbar-title class="q-ml-sm">{{ selectedConversationName || selectedConversation }}</q-toolbar-title>
               </q-toolbar>
-              
+
               <!-- Messages Container -->
               <q-scroll-area
                 ref="messagesScrollArea"
@@ -121,7 +121,7 @@
                   </div>
                 </div>
               </q-scroll-area>
-              
+
               <!-- Message Input -->
               <q-toolbar class="bg-white">
                 <q-input
@@ -231,26 +231,26 @@ const loadConversations = async () => {
       router.push('/login')
       return
     }
-    
+
     const response = await api.get('/messages/user-messages', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     })
-    
+
     const messages = response.data
-    
+
     // Group messages by conversation partner
     const conversationMap = new Map()
-    
+
     messages.forEach(message => {
-      const otherUserEmail = message.sender_id === currentUserId.value 
-        ? message.receiver_email 
+      const otherUserEmail = message.sender_id === currentUserId.value
+        ? message.receiver_email
         : message.sender_email
-      const otherUserName = message.sender_id === currentUserId.value 
-        ? message.receiver_name 
+      const otherUserName = message.sender_id === currentUserId.value
+        ? message.receiver_name
         : message.sender_name
-      
+
       if (!conversationMap.has(otherUserEmail)) {
         conversationMap.set(otherUserEmail, {
           other_user_email: otherUserEmail,
@@ -260,21 +260,21 @@ const loadConversations = async () => {
           unread_count: 0
         })
       }
-      
+
       const conv = conversationMap.get(otherUserEmail)
       if (new Date(message.created_at) > new Date(conv.last_message_time)) {
         conv.last_message = message.content
         conv.last_message_time = message.created_at
       }
-      
+
       if (!message.read_at && message.receiver_id === currentUserId.value) {
         conv.unread_count++
       }
     })
-    
+
     conversations.value = Array.from(conversationMap.values())
       .sort((a, b) => new Date(b.last_message_time) - new Date(a.last_message_time))
-    
+
   } catch (error) {
     console.error('Error loading conversations:', error)
     $q.notify({
@@ -300,14 +300,14 @@ const loadConversation = async (email) => {
         'Authorization': `Bearer ${token}`
       }
     })
-    
+
     currentMessages.value = response.data
-    
+
     // Mark messages as read
     const unreadMessages = currentMessages.value.filter(
       msg => !msg.read_at && msg.receiver_id === currentUserId.value
     )
-    
+
     for (const message of unreadMessages) {
       try {
         await api.patch(`/messages/${message.message_id}/read`, {}, {
@@ -319,18 +319,18 @@ const loadConversation = async (email) => {
         console.error('Error marking message as read:', error)
       }
     }
-    
+
     // Trigger unread count update on other pages
     if (unreadMessages.length > 0) {
       localStorage.setItem('messages_updated', Date.now().toString())
     }
-    
+
     // Scroll to bottom
     await nextTick()
     if (messagesScrollArea.value) {
       messagesScrollArea.value.setScrollPercentage('vertical', 1)
     }
-    
+
   } catch (error) {
     console.error('Error loading conversation:', error)
     $q.notify({
@@ -342,9 +342,9 @@ const loadConversation = async (email) => {
 
 const sendMessage = async () => {
   if (!newMessage.value.trim() || !selectedConversation.value || sendingMessage.value) return
-  
+
   sendingMessage.value = true
-  
+
   try {
     const token = localStorage.getItem('auth_token')
     const response = await api.post('/messages/send', {
@@ -355,20 +355,20 @@ const sendMessage = async () => {
         'Authorization': `Bearer ${token}`
       }
     })
-    
+
     const sentMessage = response.data
     currentMessages.value.push(sentMessage)
     newMessage.value = ''
-    
+
     // Scroll to bottom
     await nextTick()
     if (messagesScrollArea.value) {
       messagesScrollArea.value.setScrollPercentage('vertical', 1)
     }
-    
+
     // Update conversations list
     await loadConversations()
-    
+
   } catch (error) {
     console.error('Error sending message:', error)
     $q.notify({
@@ -382,9 +382,9 @@ const sendMessage = async () => {
 
 const sendNewMessage = async () => {
   if (!newMessageEmail.value.trim() || !newMessageContent.value.trim() || sendingMessage.value) return
-  
+
   sendingMessage.value = true
-  
+
   try {
     const token = localStorage.getItem('auth_token')
     await api.post('/messages/send', {
@@ -395,23 +395,23 @@ const sendNewMessage = async () => {
         'Authorization': `Bearer ${token}`
       }
     })
-    
+
     const recipientEmail = newMessageEmail.value.trim()
-    
+
     showNewMessageDialog.value = false
     newMessageEmail.value = ''
     newMessageContent.value = ''
-    
+
     // Select the new conversation
     selectedConversation.value = recipientEmail
     await loadConversations()
     await loadConversation(recipientEmail)
-    
+
     $q.notify({
       color: 'positive',
       message: 'Message sent successfully'
     })
-    
+
   } catch (error) {
     console.error('Error sending new message:', error)
     $q.notify({
@@ -427,7 +427,7 @@ const formatTime = (dateString) => {
   const date = new Date(dateString)
   const now = new Date()
   const diffInHours = (now - date) / (1000 * 60 * 60)
-  
+
   if (diffInHours < 24) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   } else if (diffInHours < 24 * 7) {
@@ -445,7 +445,7 @@ onMounted(async () => {
     router.push('/login')
     return
   }
-  
+
   try {
     // Decode JWT to get user ID (simplified - in production use a proper JWT library)
     const payload = JSON.parse(atob(token.split('.')[1]))
@@ -455,19 +455,18 @@ onMounted(async () => {
     router.push('/login')
     return
   }
-  
+
   await loadConversations()
-  
+
   // Check if we should start a new conversation from query params
   const route = router.currentRoute.value
   if (route.query.start_conversation) {
     const sellerEmail = route.query.start_conversation
-    const sellerName = route.query.seller_name
-    
+
     // Open the new message dialog with pre-filled seller email
     newMessageEmail.value = sellerEmail
     showNewMessageDialog.value = true
-    
+
     // Clear the query params to avoid re-opening on refresh
     router.replace({ path: '/messages' })
   }

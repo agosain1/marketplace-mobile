@@ -131,16 +131,6 @@
 
                 <q-item>
                   <q-item-section avatar>
-                    <q-icon name="info" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Status</q-item-label>
-                    <q-item-label caption>{{ listing.status }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item>
-                  <q-item-section avatar>
                     <q-icon name="visibility" />
                   </q-item-section>
                   <q-item-section>
