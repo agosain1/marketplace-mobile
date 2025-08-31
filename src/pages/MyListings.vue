@@ -129,7 +129,6 @@
                 <div class="text-subtitle2">{{ "Category: " + listing.category }}</div>
                 <div class="text-subtitle2">{{ "Location: " + listing.location }}</div>
                 <div class="text-subtitle2">{{ "Condition: " + listing.condition }}</div>
-                <div class="text-subtitle2">{{ "Status: " + listing.status }}</div>
                 <div class="text-subtitle2">{{ "Views: " + listing.views }}</div>
                 <div class="text-subtitle2">{{ "Created at: " + formatDate(listing.created_at) }}</div>
                 <div class="text-subtitle2">{{ "Last updated: " + formatDate(listing.updated_at) }}</div>
