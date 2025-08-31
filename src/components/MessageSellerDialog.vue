@@ -66,7 +66,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { api } from 'src/boot/axios'
-import { useQuasar } from 'quasar'
 
 const props = defineProps({
   modelValue: {
@@ -86,8 +85,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'message-sent'])
-
-const $q = useQuasar()
 
 // Reactive data
 const showDialog = ref(false)
@@ -133,10 +130,6 @@ const sendMessage = async () => {
   try {
     const token = localStorage.getItem('auth_token')
     if (!token) {
-      $q.notify({
-        color: 'negative',
-        message: 'Please log in to send messages'
-      })
       return
     }
 
@@ -154,11 +147,6 @@ const sendMessage = async () => {
 
   } catch (error) {
     console.error('Error sending message:', error)
-    $q.notify({
-      color: 'negative',
-      message: 'Failed to send message. Please try again.',
-      position: 'top'
-    })
   } finally {
     sending.value = false
   }
