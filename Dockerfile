@@ -1,4 +1,5 @@
 # Multi-stage build for both frontend and backend
+# docker buildx build --platform linux/amd64 -t sgosain/amb-vectordb-api-pod:latest . -f ./amzlinux-artifacts/docker-artifacts/Dockerbuild-vectordbpi-amzlinux-pod --no-cache
 FROM node:18-alpine AS frontend-build
 
 # Build frontend - copy everything first, then build

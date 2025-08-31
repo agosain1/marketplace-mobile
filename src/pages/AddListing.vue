@@ -20,7 +20,7 @@
       <!-- Location Section -->
       <div class="q-mb-md">
         <q-label class="q-mb-sm">Location</q-label>
-        <div v-if="!latitude || !longitude" class="column">
+        <div class="column">
           <q-btn
             @click="getCurrentLocation"
             icon="my_location"
@@ -28,40 +28,28 @@
             color="primary"
             outline
             :loading="gettingLocation"
-            class="full-width"
+            class="q-mb-md full-width"
           />
-          <div class="text-caption text-grey-6 q-mt-sm text-center">
-            Location access is required to create listings
-          </div>
         </div>
-        <div v-else class="column">
+        <div class="q-mb-md column">
           <q-banner class="bg-positive text-white q-mb-sm" rounded>
             <template v-slot:avatar>
               <q-icon name="location_on" />
             </template>
-            Location set: {{ locationDisplay }}
+            Location: {{ locationDisplay }}
           </q-banner>
+        </div>
 
-          <!-- Interactive Map -->
-          <div class="q-mb-sm">
-            <q-label class="q-mb-xs text-subtitle2">Adjust location on map:</q-label>
+        <!-- Interactive Map -->
+        <div class="q-mb-sm">
             <LocationMap
-              :latitude="latitude"
-              :longitude="longitude"
-              @location-changed="onMapLocationChanged"
-            />
-            <div class="text-caption text-grey-6 q-mt-xs">
-              Click or drag the marker to adjust the exact location
-            </div>
-          </div>
-
-          <q-btn
-            @click="clearLocation"
-            icon="clear"
-            label="Change Location"
-            flat
-            size="sm"
+            :latitude="latitude"
+            :longitude="longitude"
+            @location-changed="onMapLocationChanged"
           />
+          <div class="text-caption text-grey-6 q-mt-xs">
+            Click or drag the marker to adjust the exact location
+          </div>
         </div>
       </div>
       <q-select
@@ -175,10 +163,10 @@ const images = ref(null)
 const imagePreviews = ref([])
 
 // Location state
-const latitude = ref(null)
-const longitude = ref(null)
+const longitude = ref(-122.4194) // Default to SF coordinates
+const latitude = ref(37.7749)
 const manualLocation = ref("")
-const locationDisplay = ref("")
+const locationDisplay = ref("37.7749, -122.4194") // Default coordinate display
 const gettingLocation = ref(false)
 
 // Condition options
@@ -328,13 +316,8 @@ async function getCurrentLocation() {
     latitude.value = position.latitude
     longitude.value = position.longitude
 
-    // Get human-readable location name
-    locationDisplay.value = await locationService.getLocationName(
-      position.latitude,
-      position.longitude
-    )
-
     message.value = ""
+    locationDisplay.value = `${latitude.value.toFixed(4)}, ${longitude.value.toFixed(4)}`
   } catch (error) {
     message.value = error.message
   } finally {
@@ -354,15 +337,7 @@ async function onMapLocationChanged(coordinates) {
   longitude.value = coordinates.longitude
 
   // Update the location display
-  try {
-    locationDisplay.value = await locationService.getLocationName(
-      coordinates.latitude,
-      coordinates.longitude
-    )
-  } catch (error) {
-    console.log(error)
-    locationDisplay.value = `${coordinates.latitude.toFixed(4)}, ${coordinates.longitude.toFixed(4)}`
-  }
+  locationDisplay.value = `${coordinates.latitude.toFixed(4)}, ${coordinates.longitude.toFixed(4)}`
 }
 
 function goBack() {
