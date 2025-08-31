@@ -2,10 +2,26 @@
   <q-layout view="lHh Lpr lFf">
     <q-header elevated>
       <q-toolbar>
-        <q-btn flat dense round icon="menu" @click="leftDrawerOpen = !leftDrawerOpen" />
+        <q-btn flat dense round icon="menu" @click="leftDrawerOpen = !leftDrawerOpen" class="relative-position">
+          <div
+            v-if="unreadCount > 0 && isLoggedIn"
+            class="absolute"
+            style="top: 6px; left: 2px; width: 8px; height: 8px; background-color: red; border-radius: 50%;"
+          ></div>
+        </q-btn>
         <q-toolbar-title style="cursor: pointer" @click="goHome">Unimarket</q-toolbar-title>
         <q-btn v-if="!isLoggedIn" flat @click="goToLogin"> Login </q-btn>
-        <q-btn v-else flat dense round icon="account_circle" @click="goToAccount" />
+        <template v-else>
+          <q-btn flat dense round @click="goToMessages" class="relative-position">
+            <q-icon name="message" />
+            <div
+              v-if="unreadCount > 0"
+              class="absolute"
+              style="top: 6px; left: 2px; width: 8px; height: 8px; background-color: red; border-radius: 50%;"
+            ></div>
+          </q-btn>
+          <q-btn flat dense round icon="account_circle" @click="goToAccount" />
+        </template>
         <q-btn flat dense round icon="add" @click="goToAddListing" />
       </q-toolbar>
     </q-header>
@@ -17,6 +33,14 @@
         </q-item>
         <q-item clickable v-ripple @click="goToMyListings">
           <q-item-section>My Listings</q-item-section>
+        </q-item>
+        <q-item v-if="isLoggedIn" clickable v-ripple @click="goToMessages" class="relative-position">
+          <q-item-section>Messages</q-item-section>
+          <div
+            v-if="unreadCount > 0"
+            class="absolute"
+            style="top: 12px; left: 8px; width: 8px; height: 8px; background-color: red; border-radius: 50%;"
+          ></div>
         </q-item>
       </q-list>
     </q-drawer>
@@ -105,7 +129,6 @@
                 <div class="text-subtitle2">{{ "Category: " + listing.category }}</div>
                 <div class="text-subtitle2">{{ "Location: " + listing.location }}</div>
                 <div class="text-subtitle2">{{ "Condition: " + listing.condition }}</div>
-                <div class="text-subtitle2">{{ "Status: " + listing.status }}</div>
                 <div class="text-subtitle2">{{ "Views: " + listing.views }}</div>
                 <div class="text-subtitle2">{{ "Created at: " + formatDate(listing.created_at) }}</div>
                 <div class="text-subtitle2">{{ "Last updated: " + formatDate(listing.updated_at) }}</div>
@@ -152,6 +175,7 @@ export default {
       leftDrawerOpen: false,
       listings: [],
       imageSlides: {}, // Track current slide for each listing's carousel
+      unreadCount: 0,
     }
   },
   computed: {
@@ -204,6 +228,28 @@ export default {
     },
     goToMyListings() {
       this.$router.push('/my-listings')
+    },
+    goToMessages() {
+      this.$router.push('/messages')
+    },
+    async getUnreadCount() {
+      if (!this.isLoggedIn) {
+        this.unreadCount = 0
+        return
+      }
+
+      try {
+        const token = localStorage.getItem('auth_token')
+        const res = await axios.get(`${API_URL}messages/unread-count`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        this.unreadCount = res.data.unread_count || 0
+      } catch (e) {
+        console.error("Error fetching unread count:", e)
+        this.unreadCount = 0
+      }
     },
     async removeListing(listingId, index) {
       // Show confirmation dialog
@@ -260,15 +306,28 @@ export default {
     // Only fetch listings if user is logged in
     if (this.isLoggedIn) {
       this.getListings()             // fetch once on mount
+      this.getUnreadCount()          // fetch unread count on mount
 
-      // Optional: Poll every 10 seconds to always show current listings
+      // Listen for message updates from other pages
+      this.handleStorageChange = (e) => {
+        if (e.key === 'messages_updated') {
+          this.getUnreadCount()
+        }
+      }
+      window.addEventListener('storage', this.handleStorageChange)
+
+      // Optional: Poll every 10 seconds to always show current listings and unread count
       this.polling = setInterval(() => {
         this.getListings()
+        this.getUnreadCount()
       }, 10000) // 10000 = 10s
     }
   },
   beforeUnmount() {
     clearInterval(this.polling)
+    if (this.handleStorageChange) {
+      window.removeEventListener('storage', this.handleStorageChange)
+    }
   }
 
 }

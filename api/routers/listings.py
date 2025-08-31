@@ -4,6 +4,7 @@ from api.database import get_db_cursor
 from .auth import verify_jwt_token_and_email
 from fastapi import HTTPException, status
 from api.services.s3_service import get_s3_service
+from api.services.location_service import get_location_from_coords, search_location, search_location_suggestions
 from typing import List, Optional
 import uuid
 
@@ -13,8 +14,8 @@ router = APIRouter(
 )
 
 INSERT_COMMAND = """
-        INSERT INTO listings (title, description, price, currency, category, location, condition, status, views, seller_id, images)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO listings (title, description, price, currency, category, latitude, longitude, condition, status, views, seller_id, images, location)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
 
 class Listing(BaseModel):
@@ -22,7 +23,8 @@ class Listing(BaseModel):
     description: str
     price: float
     category: str
-    location: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     condition: str
     seller_id: str
 
@@ -32,7 +34,8 @@ async def create_listing(
     description: str = Form(...),
     price: float = Form(...),
     category: str = Form(...),
-    location: str = Form(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
     condition: str = Form(...),
     images: Optional[List[UploadFile]] = File(None),
     token_data: dict = Depends(verify_jwt_token_and_email)
@@ -73,10 +76,12 @@ async def create_listing(
                 image_url = get_s3_service().upload_listing_image(file_content, file_extension, listing_id)
                 image_urls.append(image_url)
         
+
+        location = get_location_from_coords(latitude, longitude)
         # Insert listing into database
         new_listing = (
-            title, description, price, 'USD', category, location,
-            condition, 'active', 0, seller_id, image_urls
+            title, description, price, 'USD', category, latitude, longitude,
+            condition, 'active', 0, seller_id, image_urls, location
         )
         
         with get_db_cursor() as cur:
@@ -111,7 +116,17 @@ async def create_listing(
 @router.get("")
 def get_listings():
     with get_db_cursor() as cur:
-        cur.execute("SELECT * FROM listings")
+        cur.execute(
+            """
+            SELECT 
+                l.*,
+                CONCAT(u.fname, ' ', u.lname) as seller_name,
+                u.email as seller_email
+            FROM listings l
+            JOIN users u ON l.seller_id = u.id
+            ORDER BY l.created_at DESC
+            """
+        )
         response = cur.fetchall()
     return response
 
@@ -126,7 +141,18 @@ def get_my_listings(token_data: dict = Depends(verify_jwt_token_and_email)):
 @router.get("/{listing_id}")
 def get_listing(listing_id: str):
     with get_db_cursor() as cur:
-        cur.execute("SELECT * FROM listings WHERE id = %s", (listing_id,))
+        cur.execute(
+            """
+            SELECT 
+                l.*,
+                CONCAT(u.fname, ' ', u.lname) as seller_name,
+                u.email as seller_email
+            FROM listings l
+            JOIN users u ON l.seller_id = u.id
+            WHERE l.id = %s
+            """,
+            (listing_id,)
+        )
         listing = cur.fetchone()
         
         if not listing:
@@ -179,3 +205,24 @@ def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token_
                 get_s3_service().delete_listing_images(s3_images)
     
     return {"message": "Listing deleted successfully"}
+
+@router.get("/search-location/{query}")
+def search_location_endpoint(query: str):
+    """
+    Search for a location and return coordinates
+    """
+    result = search_location(query)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Location not found"
+        )
+    return result
+
+@router.get("/location-suggestions/{query}")
+def get_location_suggestions(query: str, limit: int = 5):
+    """
+    Get autocomplete suggestions for location search
+    """
+    suggestions = search_location_suggestions(query, limit)
+    return {"suggestions": suggestions}

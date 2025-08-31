@@ -17,17 +17,98 @@
       <q-input v-model="description" label="Description" filled type="textarea"  name="description"/>
       <q-input v-model.number="price" label="Price" type="number" filled  name="price"/>
       <q-input v-model="category" label="Category" filled  name="category"/>
-      <q-input v-model="location" label="Location" filled  name="location"/>
-      <q-select 
-        v-model="condition" 
-        :options="conditionOptions" 
-        label="Condition" 
-        filled 
-        emit-value 
+      <!-- Location Section -->
+      <div class="q-mb-md">
+        <q-label class="q-mb-sm">Location</q-label>
+        <div class="column">
+          <q-btn
+            @click="getCurrentLocation"
+            icon="my_location"
+            label="Use Current Location"
+            color="primary"
+            outline
+            :loading="gettingLocation"
+            class="q-mb-md full-width"
+          />
+
+          <!-- Location Search with Autocomplete -->
+          <div class="relative-position">
+            <q-input
+              v-model="locationSearch"
+              label="Search city or zipcode"
+              outlined
+              dense
+              clearable
+              @keyup.enter="searchLocation"
+              @update:model-value="onLocationInput"
+              @focus="onInputFocus"
+              @blur="hideSuggestions"
+              class="q-mb-md"
+            >
+              <template v-slot:append>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="search"
+                  @click="searchLocation"
+                  :loading="searchingLocation"
+                />
+              </template>
+            </q-input>
+
+            <!-- Autocomplete Suggestions -->
+            <q-list
+              v-if="showSuggestions && locationSuggestions.length > 0"
+              class="absolute z-max bg-white shadow-4 rounded-borders"
+              style="width: 100%; top: 100%; left: 0;"
+            >
+              <q-item
+                v-for="suggestion in locationSuggestions"
+                :key="suggestion.value"
+                clickable
+                @click="selectSuggestion(suggestion)"
+                class="q-px-md q-py-sm"
+              >
+                <q-item-section>
+                  <q-item-label>{{ suggestion.display }}</q-item-label>
+                  <q-item-label caption>{{ suggestion.type === 'zipcode' ? 'Zipcode' : 'City' }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
+        </div>
+        <div class="q-mb-md column">
+          <q-banner class="bg-positive text-white q-mb-sm" rounded>
+            <template v-slot:avatar>
+              <q-icon name="location_on" />
+            </template>
+            Location: {{ locationDisplay }}
+          </q-banner>
+        </div>
+
+        <!-- Interactive Map -->
+        <div class="q-mb-sm">
+            <LocationMap
+            :latitude="latitude"
+            :longitude="longitude"
+            @location-changed="onMapLocationChanged"
+          />
+          <div class="text-caption text-grey-6 q-mt-xs">
+            Click or drag the marker to adjust the exact location
+          </div>
+        </div>
+      </div>
+      <q-select
+        v-model="condition"
+        :options="conditionOptions"
+        label="Condition"
+        filled
+        emit-value
         map-options
         name="condition"
       />
-      
+
       <!-- Image Upload Section -->
       <div class="q-mt-md">
         <q-label class="q-mb-sm">Images (Optional - up to 5 images, 5MB each)</q-label>
@@ -49,14 +130,14 @@
             class="full-width"
           />
         </div>
-        
+
         <!-- Image Previews -->
         <div v-if="imagePreviews.length > 0" class="q-mt-md">
           <q-label class="q-mb-sm">Image Previews:</q-label>
           <div class="row q-gutter-sm">
-            <div 
-              v-for="(preview, index) in imagePreviews" 
-              :key="index" 
+            <div
+              v-for="(preview, index) in imagePreviews"
+              :key="index"
               class="col-auto"
             >
               <q-img
@@ -104,6 +185,8 @@ import { ref, onMounted, watch } from "vue"
 import { useRouter } from "vue-router"
 import axios from "axios"
 import { API_URL } from '../../constants.js'
+import { locationService } from '../services/locationService.js'
+import LocationMap from '../components/LocationMap.vue'
 
 const router = useRouter()
 
@@ -125,6 +208,17 @@ const location = ref("")
 const condition = ref("")
 const images = ref(null)
 const imagePreviews = ref([])
+
+// Location state
+const longitude = ref(-122.4194) // Default to SF coordinates
+const latitude = ref(37.7749)
+const manualLocation = ref("")
+const locationDisplay = ref("37.7749, -122.4194") // Default coordinate display
+const gettingLocation = ref(false)
+const locationSearch = ref("")
+const searchingLocation = ref(false)
+const locationSuggestions = ref([])
+const showSuggestions = ref(false)
 
 // Condition options
 const conditionOptions = [
@@ -154,29 +248,29 @@ watch(images, (newImages) => {
 
 function handleFileSelect(event) {
   const files = Array.from(event.target.files)
-  
+
   // Validation
   const maxFiles = 5
   const maxFileSize = 5 * 1024 * 1024 // 5MB
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-  
+
   if (files.length > maxFiles) {
     message.value = `Maximum ${maxFiles} images allowed.`
     return
   }
-  
+
   for (const file of files) {
     if (file.size > maxFileSize) {
       message.value = `Image "${file.name}" is too large. Maximum size is 5MB.`
       return
     }
-    
+
     if (!allowedTypes.includes(file.type)) {
       message.value = `Image "${file.name}" format not supported. Use JPG, PNG, or WebP.`
       return
     }
   }
-  
+
   // Set images and clear any previous error message
   images.value = files.length > 0 ? files : null
   message.value = ""
@@ -193,8 +287,8 @@ function removeImage(index) {
 }
 
 async function addListing() {
-  if (!title.value || !description.value || !price.value || !category.value || !location.value || !condition.value) {
-    message.value = "Please fill out all fields"
+  if (!title.value || !description.value || !price.value || !category.value || !latitude.value || !longitude.value || !condition.value) {
+    message.value = "Please fill out all fields and allow location access"
     return
   }
 
@@ -207,16 +301,19 @@ async function addListing() {
 
   try {
     message.value = "Creating listing..."
-    
+
     // Use FormData for both with and without images
     const formData = new FormData()
     formData.append('title', title.value)
     formData.append('description', description.value)
     formData.append('price', price.value.toString())
     formData.append('category', category.value)
-    formData.append('location', location.value)
     formData.append('condition', condition.value)
-    
+
+    // Add GPS coordinates
+    formData.append('latitude', latitude.value.toString())
+    formData.append('longitude', longitude.value.toString())
+
     // Add image files if provided
     if (images.value && (Array.isArray(images.value) ? images.value.length > 0 : true)) {
       const files = Array.isArray(images.value) ? images.value : [images.value]
@@ -231,12 +328,12 @@ async function addListing() {
         'Authorization': `Bearer ${token}`
       }
     })
-    
-    message.value = images.value && (Array.isArray(images.value) ? images.value.length > 0 : true) 
-      ? "Listing created successfully with images!" 
+
+    message.value = images.value && (Array.isArray(images.value) ? images.value.length > 0 : true)
+      ? "Listing created successfully with images!"
       : "Listing created successfully!"
     console.log('Response:', response.data)
-    
+
     // Reset form
     title.value = ""
     description.value = ""
@@ -246,17 +343,130 @@ async function addListing() {
     condition.value = ""
     images.value = null
     imagePreviews.value = []
-    
+
+    // Reset location
+    clearLocation()
+
     // Reset file input
     const fileInput = document.querySelector('input[type="file"]')
     if (fileInput) {
       fileInput.value = ""
     }
-    
+
   } catch (e) {
     console.error('Error creating listing:', e)
     message.value = `Error creating listing: ${e.response?.data?.detail || e.message}`
   }
+}
+
+// Location methods
+async function getCurrentLocation() {
+  gettingLocation.value = true
+  try {
+    const position = await locationService.getCurrentPosition()
+    latitude.value = position.latitude
+    longitude.value = position.longitude
+
+    message.value = ""
+    locationDisplay.value = `${latitude.value.toFixed(4)}, ${longitude.value.toFixed(4)}`
+  } catch (error) {
+    message.value = error.message
+  } finally {
+    gettingLocation.value = false
+  }
+}
+
+function clearLocation() {
+  latitude.value = null
+  longitude.value = null
+  locationDisplay.value = ""
+  manualLocation.value = ""
+}
+
+async function onMapLocationChanged(coordinates) {
+  latitude.value = coordinates.latitude
+  longitude.value = coordinates.longitude
+
+  // Update the location display
+  locationDisplay.value = `${coordinates.latitude.toFixed(4)}, ${coordinates.longitude.toFixed(4)}`
+}
+
+async function searchLocation() {
+  if (!locationSearch.value.trim()) return
+
+  searchingLocation.value = true
+
+  try {
+    const response = await axios.get(`${API_URL}listings/search-location/${encodeURIComponent(locationSearch.value.trim())}`)
+
+    if (response.data) {
+      latitude.value = response.data.latitude
+      longitude.value = response.data.longitude
+      locationDisplay.value = response.data.place_name || `${response.data.latitude.toFixed(4)}, ${response.data.longitude.toFixed(4)}`
+
+      message.value = ""
+      locationSearch.value = ""
+    }
+
+  } catch (error) {
+    console.error('Error searching location:', error)
+    if (error.response?.status === 404) {
+      message.value = "Location not found. Try a different search term."
+    } else {
+      message.value = "Failed to search location. Please try again."
+    }
+  } finally {
+    searchingLocation.value = false
+  }
+}
+
+// Autocomplete functions
+let searchTimeout = null
+
+async function onLocationInput() {
+  if (searchTimeout) clearTimeout(searchTimeout)
+
+  const query = locationSearch.value?.trim()
+
+  if (!query || query.length < 2) {
+    locationSuggestions.value = []
+    showSuggestions.value = false
+    return
+  }
+
+  searchTimeout = setTimeout(async () => {
+    try {
+      const response = await axios.get(`${API_URL}listings/location-suggestions/${encodeURIComponent(query)}`)
+      locationSuggestions.value = response.data.suggestions || []
+      showSuggestions.value = locationSuggestions.value.length > 0
+    } catch (error) {
+      console.error('Error fetching suggestions:', error)
+      locationSuggestions.value = []
+      showSuggestions.value = false
+    }
+  }, 300)
+}
+
+function selectSuggestion(suggestion) {
+  latitude.value = suggestion.latitude
+  longitude.value = suggestion.longitude
+  locationDisplay.value = suggestion.place_name
+  locationSearch.value = ""
+  locationSuggestions.value = []
+  showSuggestions.value = false
+  message.value = ""
+}
+
+function onInputFocus() {
+  if (locationSuggestions.value.length > 0) {
+    showSuggestions.value = true
+  }
+}
+
+function hideSuggestions() {
+  setTimeout(() => {
+    showSuggestions.value = false
+  }, 200)
 }
 
 function goBack() {
