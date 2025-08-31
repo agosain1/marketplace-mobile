@@ -4,7 +4,7 @@ from api.database import get_db_cursor
 from .auth import verify_jwt_token_and_email
 from fastapi import HTTPException, status
 from api.services.s3_service import get_s3_service
-from api.services.location_service import get_location_from_coords, search_location
+from api.services.location_service import get_location_from_coords, search_location, search_location_suggestions
 from typing import List, Optional
 import uuid
 
@@ -218,3 +218,11 @@ def search_location_endpoint(query: str):
             detail="Location not found"
         )
     return result
+
+@router.get("/location-suggestions/{query}")
+def get_location_suggestions(query: str, limit: int = 5):
+    """
+    Get autocomplete suggestions for location search
+    """
+    suggestions = search_location_suggestions(query, limit)
+    return {"suggestions": suggestions}
