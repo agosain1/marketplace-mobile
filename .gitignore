@@ -48,9 +48,11 @@ secrets.txt
 docker-compose.override.yml
 
 # Python cache (for API)
-api/__pycache__
+api/__pycache__/
 api/*.pyc
 api/*.pyo
+api/routers/__pycache__/
+api/services/__pycache__/
 
 # Railway deployment files (local helpers, not needed in Git)
 railway-deploy.sh
