@@ -48,7 +48,7 @@ secrets.txt
 docker-compose.override.yml
 
 # Python cache (for API)
-api/__pycache__/
+api/__pycache__
 api/*.pyc
 api/*.pyo
 
