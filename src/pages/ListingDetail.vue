@@ -196,6 +196,14 @@
         </div>
       </q-page>
     </q-page-container>
+
+    <!-- Message Seller Dialog -->
+    <MessageSellerDialog
+      v-model="showMessageDialog"
+      :seller="selectedSeller"
+      :listing="selectedListing"
+      @message-sent="onMessageSent"
+    />
   </q-layout>
 </template>
 
@@ -203,9 +211,13 @@
 import axios from "axios"
 import { API_URL } from '../../constants.js'
 import { formatDate, getTimezoneAbbreviation } from '../utils/dateUtils.js'
+import MessageSellerDialog from 'src/components/MessageSellerDialog.vue'
 
 export default {
   name: "ListingDetail",
+  components: {
+    MessageSellerDialog
+  },
   data() {
     return {
       listing: null,
@@ -213,6 +225,9 @@ export default {
       error: null,
       currentSlide: 0,
       currentUserEmail: null,
+      showMessageDialog: false,
+      selectedSeller: {},
+      selectedListing: {},
     }
   },
   computed: {
@@ -254,14 +269,21 @@ export default {
     messageSeller() {
       if (!this.listing) return
       
-      // Navigate to messages page and start a conversation with the seller
-      this.$router.push({
-        path: '/messages',
-        query: {
-          start_conversation: this.listing.seller_email,
-          seller_name: this.listing.seller_name
-        }
-      })
+      // Set up dialog data and show it
+      this.selectedSeller = {
+        name: this.listing.seller_name,
+        email: this.listing.seller_email
+      }
+      this.selectedListing = {
+        title: this.listing.title,
+        price: this.listing.price,
+        currency: this.listing.currency
+      }
+      this.showMessageDialog = true
+    },
+    onMessageSent() {
+      // Handle successful message sent
+      // Could show additional feedback or update UI
     },
     async getCurrentUser() {
       if (!this.isLoggedIn) {

@@ -127,6 +127,14 @@
         </div>
       </q-page>
     </q-page-container>
+
+    <!-- Message Seller Dialog -->
+    <MessageSellerDialog
+      v-model="showMessageDialog"
+      :seller="selectedSeller"
+      :listing="selectedListing"
+      @message-sent="onMessageSent"
+    />
   </q-layout>
 </template>
 
@@ -134,10 +142,14 @@
 import axios from "axios"
 import { API_URL } from '../../constants.js'
 import { formatDate, getTimezoneAbbreviation } from '../utils/dateUtils.js'
+import MessageSellerDialog from 'src/components/MessageSellerDialog.vue'
 
 
 export default {
   name: "IndexPage",
+  components: {
+    MessageSellerDialog
+  },
   data() {
     return {
       leftDrawerOpen: false,
@@ -145,6 +157,9 @@ export default {
       imageSlides: {}, // Track current slide for each listing's carousel
       unreadCount: 0,
       currentUserEmail: null,
+      showMessageDialog: false,
+      selectedSeller: {},
+      selectedListing: {},
     }
   },
   computed: {
@@ -217,14 +232,22 @@ export default {
       this.$router.push(`/listing/${listingId}`)
     },
     messageSeller(listing) {
-      // Navigate to messages page and start a conversation with the seller
-      this.$router.push({
-        path: '/messages',
-        query: {
-          start_conversation: listing.seller_email,
-          seller_name: listing.seller_name
-        }
-      })
+      // Set up dialog data and show it
+      this.selectedSeller = {
+        name: listing.seller_name,
+        email: listing.seller_email
+      }
+      this.selectedListing = {
+        title: listing.title,
+        price: listing.price,
+        currency: listing.currency
+      }
+      this.showMessageDialog = true
+    },
+    onMessageSent() {
+      // Handle successful message sent
+      // Could refresh unread count or show additional feedback
+      this.getUnreadCount()
     },
     async getCurrentUser() {
       if (!this.isLoggedIn) {
