@@ -50,7 +50,9 @@ def get_user_messages(user_id: str, limit: int = 50, offset: int = 0) -> List[Di
                 m.created_at,
                 m.read_at,
                 sender.email as sender_email,
-                receiver.email as receiver_email
+                receiver.email as receiver_email,
+                CONCAT(sender.fname, ' ', sender.lname) as sender_name,
+                CONCAT(receiver.fname, ' ', receiver.lname) as receiver_name
             FROM messages m
             JOIN users sender ON m.sender_id = sender.id
             JOIN users receiver ON m.receiver_id = receiver.id
@@ -70,7 +72,9 @@ def get_user_messages(user_id: str, limit: int = 50, offset: int = 0) -> List[Di
         "created_at": msg["created_at"].isoformat(),
         "read_at": msg["read_at"].isoformat() if msg["read_at"] else None,
         "sender_email": msg["sender_email"],
-        "receiver_email": msg["receiver_email"]
+        "receiver_email": msg["receiver_email"],
+        "sender_name": msg["sender_name"],
+        "receiver_name": msg["receiver_name"]
     } for msg in messages]
 
 def get_conversation(user_id: str, other_user_email: str, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
@@ -97,7 +101,9 @@ def get_conversation(user_id: str, other_user_email: str, limit: int = 50, offse
                 m.created_at,
                 m.read_at,
                 sender.email as sender_email,
-                receiver.email as receiver_email
+                receiver.email as receiver_email,
+                CONCAT(sender.fname, ' ', sender.lname) as sender_name,
+                CONCAT(receiver.fname, ' ', receiver.lname) as receiver_name
             FROM messages m
             JOIN users sender ON m.sender_id = sender.id
             JOIN users receiver ON m.receiver_id = receiver.id
@@ -118,7 +124,9 @@ def get_conversation(user_id: str, other_user_email: str, limit: int = 50, offse
         "created_at": msg["created_at"].isoformat(),
         "read_at": msg["read_at"].isoformat() if msg["read_at"] else None,
         "sender_email": msg["sender_email"],
-        "receiver_email": msg["receiver_email"]
+        "receiver_email": msg["receiver_email"],
+        "sender_name": msg["sender_name"],
+        "receiver_name": msg["receiver_name"]
     } for msg in messages]
 
 def mark_message_as_read(message_id: str, user_id: str) -> Dict[str, Any]:
