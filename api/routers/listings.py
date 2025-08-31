@@ -4,7 +4,7 @@ from api.database import get_db_cursor
 from .auth import verify_jwt_token_and_email
 from fastapi import HTTPException, status
 from api.services.s3_service import get_s3_service
-from api.services.location_service import get_location_from_coords
+from api.services.location_service import get_location_from_coords, search_location
 from typing import List, Optional
 import uuid
 
@@ -205,3 +205,16 @@ def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token_
                 get_s3_service().delete_listing_images(s3_images)
     
     return {"message": "Listing deleted successfully"}
+
+@router.get("/search-location/{query}")
+def search_location_endpoint(query: str):
+    """
+    Search for a location and return coordinates
+    """
+    result = search_location(query)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Location not found"
+        )
+    return result

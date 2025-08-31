@@ -30,6 +30,28 @@
             :loading="gettingLocation"
             class="q-mb-md full-width"
           />
+          
+          <!-- Location Search -->
+          <q-input
+            v-model="locationSearch"
+            label="Search city or zipcode"
+            outlined
+            dense
+            clearable
+            @keyup.enter="searchLocation"
+            class="q-mb-md"
+          >
+            <template v-slot:append>
+              <q-btn 
+                flat 
+                round 
+                dense 
+                icon="search" 
+                @click="searchLocation"
+                :loading="searchingLocation"
+              />
+            </template>
+          </q-input>
         </div>
         <div class="q-mb-md column">
           <q-banner class="bg-positive text-white q-mb-sm" rounded>
@@ -168,6 +190,8 @@ const latitude = ref(37.7749)
 const manualLocation = ref("")
 const locationDisplay = ref("37.7749, -122.4194") // Default coordinate display
 const gettingLocation = ref(false)
+const locationSearch = ref("")
+const searchingLocation = ref(false)
 
 // Condition options
 const conditionOptions = [
@@ -338,6 +362,35 @@ async function onMapLocationChanged(coordinates) {
 
   // Update the location display
   locationDisplay.value = `${coordinates.latitude.toFixed(4)}, ${coordinates.longitude.toFixed(4)}`
+}
+
+async function searchLocation() {
+  if (!locationSearch.value.trim()) return
+  
+  searchingLocation.value = true
+  
+  try {
+    const response = await axios.get(`${API_URL}listings/search-location/${encodeURIComponent(locationSearch.value.trim())}`)
+    
+    if (response.data) {
+      latitude.value = response.data.latitude
+      longitude.value = response.data.longitude
+      locationDisplay.value = response.data.place_name || `${response.data.latitude.toFixed(4)}, ${response.data.longitude.toFixed(4)}`
+      
+      message.value = ""
+      locationSearch.value = ""
+    }
+    
+  } catch (error) {
+    console.error('Error searching location:', error)
+    if (error.response?.status === 404) {
+      message.value = "Location not found. Try a different search term."
+    } else {
+      message.value = "Failed to search location. Please try again."
+    }
+  } finally {
+    searchingLocation.value = false
+  }
 }
 
 function goBack() {
