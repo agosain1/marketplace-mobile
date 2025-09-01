@@ -98,7 +98,7 @@
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Description</q-item-label>
-                        <q-item-label caption class="text-wrap">{{ listing.description }}</q-item-label>
+                        <q-item-label caption class="text-wrap text-black">{{ listing.description }}</q-item-label>
                       </q-item-section>
                     </q-item>
 
@@ -108,7 +108,7 @@
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Category</q-item-label>
-                        <q-item-label caption>{{ listing.category }}</q-item-label>
+                        <q-item-label caption class="text-black">{{ listing.category }}</q-item-label>
                       </q-item-section>
                     </q-item>
 
@@ -118,7 +118,7 @@
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Location</q-item-label>
-                        <q-item-label caption>{{ listing.location }}</q-item-label>
+                        <q-item-label caption class="text-black">{{ listing.location }}</q-item-label>
                       </q-item-section>
                     </q-item>
 
@@ -128,7 +128,7 @@
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Condition</q-item-label>
-                        <q-item-label caption>{{ listing.condition }}</q-item-label>
+                        <q-item-label caption class="text-black">{{ listing.condition }}</q-item-label>
                       </q-item-section>
                     </q-item>
 
@@ -138,7 +138,7 @@
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Views</q-item-label>
-                        <q-item-label caption>{{ listing.views }}</q-item-label>
+                        <q-item-label caption class="text-black">{{ listing.views }}</q-item-label>
                       </q-item-section>
                     </q-item>
 
@@ -148,7 +148,7 @@
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Seller</q-item-label>
-                        <q-item-label caption>{{ listing.seller_name || 'Unknown' }}</q-item-label>
+                        <q-item-label caption class="text-black">{{ listing.seller_name || 'Unknown' }}</q-item-label>
                       </q-item-section>
                     </q-item>
 
@@ -158,7 +158,7 @@
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Created</q-item-label>
-                        <q-item-label caption>{{ formatDate(listing.created_at) }}</q-item-label>
+                        <q-item-label caption class="text-black">{{ formatDate(listing.created_at) }}</q-item-label>
                       </q-item-section>
                     </q-item>
 
@@ -168,7 +168,7 @@
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Last Updated</q-item-label>
-                        <q-item-label caption>{{ formatDate(listing.updated_at) }}</q-item-label>
+                        <q-item-label caption class="text-black">{{ formatDate(listing.updated_at) }}</q-item-label>
                       </q-item-section>
                     </q-item>
                   </q-list>
