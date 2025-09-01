@@ -13,10 +13,44 @@
       <q-page class="column flex items-stretch">
         <!-- Form Content -->
         <div class="q-pa-md q-gutter-md">
-      <q-input v-model="title" label="Title" filled  name="title"/>
-      <q-input v-model="description" label="Description" filled type="textarea"  name="description"/>
-      <q-input v-model.number="price" label="Price" type="number" filled  name="price"/>
-      <q-input v-model="category" label="Category" filled  name="category"/>
+      <q-input 
+        v-model="title" 
+        label="Title" 
+        filled  
+        name="title"
+        :error="validationErrors.title"
+        error-message="Title is required"
+        @update:model-value="clearFieldError('title')"
+      />
+      <q-input 
+        v-model="description" 
+        label="Description" 
+        filled 
+        type="textarea"  
+        name="description"
+        :error="validationErrors.description"
+        error-message="Description is required"
+        @update:model-value="clearFieldError('description')"
+      />
+      <q-input 
+        v-model.number="price" 
+        label="Price" 
+        type="number" 
+        filled  
+        name="price"
+        :error="validationErrors.price"
+        error-message="Price is required"
+        @update:model-value="clearFieldError('price')"
+      />
+      <q-input 
+        v-model="category" 
+        label="Category" 
+        filled  
+        name="category"
+        :error="validationErrors.category"
+        error-message="Category is required"
+        @update:model-value="clearFieldError('category')"
+      />
       <!-- Location Section -->
       <div class="q-mb-md">
         <q-label class="q-mb-sm">Location</q-label>
@@ -88,7 +122,7 @@
         </div>
 
         <!-- Interactive Map -->
-        <div class="q-mb-sm">
+        <div class="q-mb-sm" :class="{ 'error-border': validationErrors.location }">
             <LocationMap
             :latitude="latitude"
             :longitude="longitude"
@@ -96,6 +130,9 @@
           />
           <div class="text-caption text-grey-6 q-mt-xs">
             Pan the map to position the marker over your desired location
+          </div>
+          <div v-if="validationErrors.location" class="text-negative text-caption q-mt-xs">
+            Location is required
           </div>
         </div>
       </div>
@@ -107,6 +144,9 @@
         emit-value
         map-options
         name="condition"
+        :error="validationErrors.condition"
+        error-message="Condition is required"
+        @update:model-value="clearFieldError('condition')"
       />
 
       <!-- Image Upload Section -->
@@ -219,6 +259,7 @@ const locationSearch = ref("")
 const searchingLocation = ref(false)
 const locationSuggestions = ref([])
 const showSuggestions = ref(false)
+const validationErrors = ref({})
 
 // Condition options
 const conditionOptions = [
@@ -286,9 +327,28 @@ function removeImage(index) {
   }
 }
 
+function validateFields() {
+  validationErrors.value = {}
+  
+  if (!title.value) validationErrors.value.title = true
+  if (!description.value) validationErrors.value.description = true
+  if (!price.value) validationErrors.value.price = true
+  if (!category.value) validationErrors.value.category = true
+  if (!latitude.value || !longitude.value) validationErrors.value.location = true
+  if (!condition.value) validationErrors.value.condition = true
+  
+  return Object.keys(validationErrors.value).length === 0
+}
+
+function clearFieldError(field) {
+  if (validationErrors.value[field]) {
+    delete validationErrors.value[field]
+  }
+}
+
 async function addListing() {
-  if (!title.value || !description.value || !price.value || !category.value || !latitude.value || !longitude.value || !condition.value) {
-    message.value = "Please fill out all fields"
+  if (!validateFields()) {
+    message.value = "Please fill out all required fields"
     return
   }
 
@@ -329,9 +389,7 @@ async function addListing() {
       }
     })
 
-    message.value = images.value && (Array.isArray(images.value) ? images.value.length > 0 : true)
-      ? "Listing created successfully with images!"
-      : "Listing created successfully!"
+    message.value = "Listing created successfully"
     console.log('Response:', response.data)
 
     // Reset form
@@ -389,6 +447,9 @@ async function onMapLocationChanged(coordinates) {
 
   // Update the location display
   locationDisplay.value = `${coordinates.latitude.toFixed(4)}, ${coordinates.longitude.toFixed(4)}`
+  
+  // Clear location error when coordinates are set
+  clearFieldError('location')
 }
 
 async function searchLocation() {
@@ -473,3 +534,11 @@ function goBack() {
   router.back() // 👈 goes back in history, like a phone's back button
 }
 </script>
+
+<style scoped>
+.error-border {
+  border: 2px solid #f44336;
+  border-radius: 8px;
+  padding: 4px;
+}
+</style>
