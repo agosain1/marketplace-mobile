@@ -182,7 +182,7 @@
                       :latitude="listing.latitude"
                       :longitude="listing.longitude"
                       :location="listing.location"
-                      :zoom="14"
+                      :zoom="11"
                     />
                   </div>
                 </div>
