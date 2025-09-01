@@ -82,93 +82,111 @@
 
             <!-- Title and Price -->
             <q-card-section>
-              <div class="text-h4 q-mb-sm">{{ listing.title }}</div>
+              <div class="text-h4 q-mb-sm text-blue-7">{{ listing.title }}</div>
               <div class="text-h5 text-green-7 q-mb-md">${{ listing.price }} {{ listing.currency }}</div>
             </q-card-section>
 
-            <!-- Details -->
+            <!-- Details Section with Map -->
             <q-card-section>
-              <q-list dense>
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="description" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Description</q-item-label>
-                    <q-item-label caption class="text-wrap">{{ listing.description }}</q-item-label>
-                  </q-item-section>
-                </q-item>
+              <div class="row q-col-gutter-md">
+                <!-- Left side - Details -->
+                <div class="col-xs-12 col-sm-7 col-md-7 col-lg-7">
+                  <q-list dense>
+                    <q-item>
+                      <q-item-section avatar>
+                        <q-icon name="description" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-blue-7">Description</q-item-label>
+                        <q-item-label caption class="text-wrap">{{ listing.description }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
 
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="category" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Category</q-item-label>
-                    <q-item-label caption>{{ listing.category }}</q-item-label>
-                  </q-item-section>
-                </q-item>
+                    <q-item>
+                      <q-item-section avatar>
+                        <q-icon name="category" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-blue-7">Category</q-item-label>
+                        <q-item-label caption>{{ listing.category }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
 
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="place" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Location</q-item-label>
-                    <q-item-label caption>{{ listing.location }}</q-item-label>
-                  </q-item-section>
-                </q-item>
+                    <q-item>
+                      <q-item-section avatar>
+                        <q-icon name="place" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-blue-7">Location</q-item-label>
+                        <q-item-label caption>{{ listing.location }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
 
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="star" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Condition</q-item-label>
-                    <q-item-label caption>{{ listing.condition }}</q-item-label>
-                  </q-item-section>
-                </q-item>
+                    <q-item>
+                      <q-item-section avatar>
+                        <q-icon name="star" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-blue-7">Condition</q-item-label>
+                        <q-item-label caption>{{ listing.condition }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
 
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="visibility" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Views</q-item-label>
-                    <q-item-label caption>{{ listing.views }}</q-item-label>
-                  </q-item-section>
-                </q-item>
+                    <q-item>
+                      <q-item-section avatar>
+                        <q-icon name="visibility" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-blue-7">Views</q-item-label>
+                        <q-item-label caption>{{ listing.views }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
 
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="person" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Seller</q-item-label>
-                    <q-item-label caption>{{ listing.seller_name || 'Unknown' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
+                    <q-item>
+                      <q-item-section avatar>
+                        <q-icon name="person" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-blue-7">Seller</q-item-label>
+                        <q-item-label caption>{{ listing.seller_name || 'Unknown' }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
 
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="schedule" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Created</q-item-label>
-                    <q-item-label caption>{{ formatDate(listing.created_at) }}</q-item-label>
-                  </q-item-section>
-                </q-item>
+                    <q-item>
+                      <q-item-section avatar>
+                        <q-icon name="schedule" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-blue-7">Created</q-item-label>
+                        <q-item-label caption>{{ formatDate(listing.created_at) }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
 
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="update" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Last Updated</q-item-label>
-                    <q-item-label caption>{{ formatDate(listing.updated_at) }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
+                    <q-item>
+                      <q-item-section avatar>
+                        <q-icon name="update" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-blue-7">Last Updated</q-item-label>
+                        <q-item-label caption>{{ formatDate(listing.updated_at) }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </div>
+
+                <!-- Right side - Location Map -->
+                <div class="col-xs-12 col-sm-5 col-md-5 col-lg-5">
+                  <div v-if="listing.latitude && listing.longitude">
+                    <h6 class="q-ma-none q-mb-md text-grey-8">Approximate Location</h6>
+                    <ListingLocationMap
+                      :latitude="listing.latitude"
+                      :longitude="listing.longitude"
+                      :location="listing.location"
+                      :zoom="14"
+                    />
+                  </div>
+                </div>
+              </div>
             </q-card-section>
 
             <!-- Actions -->
@@ -202,11 +220,13 @@ import axios from "axios"
 import { API_URL } from '../../constants.js'
 import { formatDate } from '../utils/dateUtils.js'
 import MessageSellerDialog from 'src/components/MessageSellerDialog.vue'
+import ListingLocationMap from 'src/components/ListingLocationMap.vue'
 
 export default {
   name: "ListingDetail",
   components: {
-    MessageSellerDialog
+    MessageSellerDialog,
+    ListingLocationMap
   },
   data() {
     return {
