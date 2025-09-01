@@ -176,7 +176,7 @@
 
                 <!-- Right side - Location Map -->
                 <div class="col-xs-12 col-sm-5 col-md-5 col-lg-5">
-                  <div v-if="listing.latitude && listing.longitude" style="margin-top: -150px;">
+                  <div v-if="listing.latitude && listing.longitude" class="map-container-responsive">
                     <h6 class="q-ma-none q-mb-md text-grey-8">Approximate Location</h6>
                     <ListingLocationMap
                       :latitude="listing.latitude"
@@ -325,3 +325,17 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+@media (min-width: 576px) {
+  .map-container-responsive {
+    margin-top: -150px;
+  }
+}
+
+@media (max-width: 575px) {
+  .map-container-responsive {
+    margin-top: 0;
+  }
+}
+</style>
