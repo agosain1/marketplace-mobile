@@ -42,7 +42,7 @@ async def create_listing(
 ):
     seller_id = token_data['uuid']
     listing_id = str(uuid.uuid4())
-    image_urls = ["https://placebear.com/g/200/200"]  # Default placeholder
+    image_urls = []
     
     try:
         # Handle image uploads if provided
@@ -102,7 +102,7 @@ async def create_listing(
         # Clean up any uploaded images if database insert fails
         if 'image_urls' in locals() and images and len(images) > 0:
             # Only clean up actual uploaded images, not placeholders
-            uploaded_images = [url for url in image_urls if not url.startswith('https://placebear.com')]
+            uploaded_images = [url for url in image_urls]
             if uploaded_images:
                 get_s3_service().delete_listing_images(uploaded_images)
         
@@ -200,7 +200,7 @@ def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token_
         # Delete images from S3
         if image_urls and isinstance(image_urls, list):
             # Filter out placeholder images
-            s3_images = [url for url in image_urls if not url.startswith('https://placebear.com')]
+            s3_images = [url for url in image_urls]
             if s3_images:
                 get_s3_service().delete_listing_images(s3_images)
     
