@@ -1,4 +1,4 @@
-export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+import { GOOGLE_CLIENT_ID } from '../../constants.js'
 
 export const googleAuthConfig = {
   clientId: GOOGLE_CLIENT_ID,
