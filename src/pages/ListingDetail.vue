@@ -39,7 +39,7 @@
                 animated
                 arrows
                 navigation
-                height="300px"
+                height="400px"
                 class="bg-grey-1 shadow-2 rounded-borders"
               >
                 <q-carousel-slide
@@ -51,8 +51,8 @@
                   <q-img
                     :src="image"
                     :alt="`${listing.title} - Image ${imgIndex + 1}`"
-                    fit="cover"
-                    style="height: 300px; width: 100%;"
+                    fit="contain"
+                    style="max-height: 400px; width: 100%;"
                     class="rounded-borders"
                   />
                 </q-carousel-slide>
@@ -63,8 +63,8 @@
                 v-else
                 :src="listing.images[0]"
                 :alt="listing.title"
-                fit="cover"
-                style="height: 300px; width: 100%;"
+                fit="contain"
+                style="max-height: 400px; width: 100%;"
                 class="rounded-borders"
               />
 
