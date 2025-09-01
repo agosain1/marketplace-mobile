@@ -1,6 +1,10 @@
 <template>
   <div class="location-map-container">
     <div ref="mapContainer" class="map-container"></div>
+    <!-- Fixed center crosshair -->
+    <div class="center-marker">
+      <q-icon name="place" size="32px" color="primary" />
+    </div>
     <div class="map-controls">
       <q-btn
         @click="centerOnCurrentLocation"
@@ -41,7 +45,6 @@ const emit = defineEmits(['location-changed'])
 const mapContainer = ref(null)
 const gettingLocation = ref(false)
 let map = null
-let marker = null
 
 onMounted(() => {
   if (!MAPBOX_ACCESS_TOKEN) {
@@ -59,45 +62,25 @@ onMounted(() => {
     zoom: props.zoom
   })
 
-  // Add marker
-  marker = new mapboxgl.Marker({
-    draggable: true,
-    color: '#1976d2'
-  })
-    .setLngLat([props.longitude || -122.4194, props.latitude || 37.7749])
-    .addTo(map)
-
-  // Handle marker drag
-  marker.on('dragend', () => {
-    const lngLat = marker.getLngLat()
+  // Handle map movement - emit new center coordinates
+  map.on('moveend', () => {
+    const center = map.getCenter()
     emit('location-changed', {
-      latitude: lngLat.lat,
-      longitude: lngLat.lng
-    })
-  })
-
-  // Handle map click
-  map.on('click', (e) => {
-    const { lng, lat } = e.lngLat
-    marker.setLngLat([lng, lat])
-    emit('location-changed', {
-      latitude: lat,
-      longitude: lng
+      latitude: center.lat,
+      longitude: center.lng
     })
   })
 
   // If we have initial coordinates, set them
   if (props.latitude && props.longitude) {
     map.setCenter([props.longitude, props.latitude])
-    marker.setLngLat([props.longitude, props.latitude])
   }
 })
 
 // Watch for prop changes
 watch(() => [props.latitude, props.longitude], ([newLat, newLng]) => {
-  if (map && marker && newLat && newLng) {
+  if (map && newLat && newLng) {
     map.setCenter([newLng, newLat])
-    marker.setLngLat([newLng, newLat])
   }
 })
 
@@ -119,11 +102,10 @@ const centerOnCurrentLocation = async () => {
     })
 
     const { latitude, longitude } = position.coords
-    
-    if (map && marker) {
+
+    if (map) {
       map.setCenter([longitude, latitude])
-      marker.setLngLat([longitude, latitude])
-      
+
       emit('location-changed', {
         latitude,
         longitude
@@ -168,5 +150,15 @@ onUnmounted(() => {
 .center-btn {
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(4px);
+}
+
+.center-marker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 </style>
