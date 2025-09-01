@@ -94,7 +94,7 @@
                   <q-list dense>
                     <q-item>
                       <q-item-section avatar>
-                        <q-icon name="description" />
+                        <q-icon name="description" color="blue-7" />
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Description</q-item-label>
@@ -104,7 +104,7 @@
 
                     <q-item>
                       <q-item-section avatar>
-                        <q-icon name="category" />
+                        <q-icon name="category" color="purple-6" />
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Category</q-item-label>
@@ -114,7 +114,7 @@
 
                     <q-item>
                       <q-item-section avatar>
-                        <q-icon name="place" />
+                        <q-icon name="place" color="red-6" />
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Location</q-item-label>
@@ -124,7 +124,7 @@
 
                     <q-item>
                       <q-item-section avatar>
-                        <q-icon name="star" />
+                        <q-icon name="star" color="amber-6" />
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Condition</q-item-label>
@@ -134,7 +134,7 @@
 
                     <q-item>
                       <q-item-section avatar>
-                        <q-icon name="visibility" />
+                        <q-icon name="visibility" color="brown-6" />
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Views</q-item-label>
@@ -144,7 +144,7 @@
 
                     <q-item>
                       <q-item-section avatar>
-                        <q-icon name="person" />
+                        <q-icon name="person" color="green-6" />
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Seller</q-item-label>
@@ -154,7 +154,7 @@
 
                     <q-item>
                       <q-item-section avatar>
-                        <q-icon name="schedule" />
+                        <q-icon name="schedule" color="orange-6" />
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Created</q-item-label>
@@ -164,7 +164,7 @@
 
                     <q-item>
                       <q-item-section avatar>
-                        <q-icon name="update" />
+                        <q-icon name="update" color="teal-6" />
                       </q-item-section>
                       <q-item-section>
                         <q-item-label class="text-blue-7">Last Updated</q-item-label>
