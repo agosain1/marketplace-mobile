@@ -95,7 +95,7 @@
             @location-changed="onMapLocationChanged"
           />
           <div class="text-caption text-grey-6 q-mt-xs">
-            Click or drag the marker to adjust the exact location
+            Pan the map to position the marker over your desired location
           </div>
         </div>
       </div>
@@ -288,7 +288,7 @@ function removeImage(index) {
 
 async function addListing() {
   if (!title.value || !description.value || !price.value || !category.value || !latitude.value || !longitude.value || !condition.value) {
-    message.value = "Please fill out all fields and allow location access"
+    message.value = "Please fill out all fields"
     return
   }
 
