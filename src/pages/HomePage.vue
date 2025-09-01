@@ -47,11 +47,18 @@
 
     <q-page-container>
       <q-page>
-        <div class="q-px-lg q-pb-md">
+        <div class="q-pa-lg">
           <h4>Current Listings</h4>
-          <q-card v-for="(listing, index) in listings" :key="index" class="q-mb-md cursor-pointer" @click="goToListing(listing.id)">
+          <div class="row">
+            <div
+              v-for="(listing, index) in listings"
+              :key="index"
+              class="col-xs-12 col-sm-6 col-md-4 col-lg-3"
+            >
+              <div class="q-pa-sm">
+                <q-card class="full-height cursor-pointer" @click="goToListing(listing.id)">
             <q-card-section>
-              <div v-if="listing.images && listing.images.length > 0" class="q-mb-md">
+              <div v-if="listing.images && listing.images.length > 0" class="q-mb-md" style="height: 150px;">
                 <!-- Image Carousel -->
                 <q-carousel
                   v-if="listing.images.length > 1"
@@ -60,8 +67,8 @@
                   animated
                   arrows
                   navigation
-                  height="200px"
-                  class="bg-grey-1 shadow-2 rounded-borders"
+                  height="150px"
+                  @click.stop
                 >
                   <q-carousel-slide
                     v-for="(image, imgIndex) in listing.images"
@@ -73,7 +80,7 @@
                       :src="image"
                       :alt="`${listing.title} - Image ${imgIndex + 1}`"
                       fit="cover"
-                      style="height: 200px; width: 100%;"
+                      style="height: 150px; width: 100%;"
                       class="rounded-borders"
                     />
                   </q-carousel-slide>
@@ -85,31 +92,13 @@
                   :src="listing.images[0]"
                   :alt="listing.title"
                   fit="cover"
-                  style="height: 200px; width: 100%;"
+                  style="height: 150px; width: 100%;"
                   class="rounded-borders"
                 />
-
-                <!-- Image Counter -->
-                <div v-if="listing.images.length > 1" class="absolute-top-right q-ma-sm">
-                  <q-chip
-                    dense
-                    color="black"
-                    text-color="white"
-                    icon="photo"
-                    :label="`${(imageSlides[index] || 0) + 1}/${listing.images.length}`"
-                  />
-                </div>
               </div>
               <div class="text-h6">{{ listing.title }}</div>
-              <div class="text-subtitle2">{{ "Description: " + listing.description }}</div>
               <div class="text-subtitle2">{{ "$" + listing.price + " " + listing.currency }}</div>
-              <div class="text-subtitle2">{{ "Category: " + listing.category }}</div>
               <div class="text-subtitle2">{{ "Location: " + listing.location }}</div>
-              <div class="text-subtitle2">{{ "Condition: " + listing.condition }}</div>
-              <div class="text-subtitle2">{{ "Views: " + listing.views }}</div>
-              <div class="text-subtitle2 text-weight-medium">{{ "Seller: " + (listing.seller_name || 'Unknown') }}</div>
-              <div class="text-subtitle2">{{ "Created at: " + formatDate(listing.created_at) }}</div>
-              <div class="text-subtitle2">{{ "Last updated: " + formatDate(listing.updated_at) }}</div>
 
             </q-card-section>
             <q-card-actions align="right">
@@ -122,7 +111,10 @@
                 @click.stop="messageSeller(listing)"
               />
             </q-card-actions>
-          </q-card>
+                </q-card>
+              </div>
+            </div>
+          </div>
         </div>
       </q-page>
     </q-page-container>
@@ -173,7 +165,14 @@ export default {
         console.log("API response:", res.data) // Debug log
 
         // Ensure listings is always an array
-        this.listings = Array.isArray(res.data) ? res.data : []
+        let allListings = Array.isArray(res.data) ? res.data : []
+
+        // Filter out current user's listings if logged in
+        if (this.isLoggedIn && this.currentUserEmail) {
+          this.listings = allListings.filter(listing => listing.seller_email !== this.currentUserEmail)
+        } else {
+          this.listings = allListings
+        }
 
         // Initialize image slides for each listing
         const slides = {}
@@ -265,10 +264,10 @@ export default {
     },
     formatDate
   },
-  mounted() {
-    this.getListings()             // fetch once on mount
+  async mounted() {
+    await this.getCurrentUser()    // get current user info first
+    this.getListings()             // then fetch filtered listings
     this.getUnreadCount()          // fetch unread count on mount
-    this.getCurrentUser()          // get current user info
 
     // Listen for message updates from other pages
     this.handleStorageChange = (e) => {

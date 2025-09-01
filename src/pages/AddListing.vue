@@ -13,39 +13,39 @@
       <q-page class="column flex items-stretch">
         <!-- Form Content -->
         <div class="q-pa-md q-gutter-md">
-      <q-input 
-        v-model="title" 
-        label="Title" 
-        filled  
+      <q-input
+        v-model="title"
+        label="Title"
+        filled
         name="title"
         :error="validationErrors.title"
         error-message="Title is required"
         @update:model-value="clearFieldError('title')"
       />
-      <q-input 
-        v-model="description" 
-        label="Description" 
-        filled 
-        type="textarea"  
+      <q-input
+        v-model="description"
+        label="Description"
+        filled
+        type="textarea"
         name="description"
         :error="validationErrors.description"
         error-message="Description is required"
         @update:model-value="clearFieldError('description')"
       />
-      <q-input 
-        v-model.number="price" 
-        label="Price" 
-        type="number" 
-        filled  
+      <q-input
+        v-model.number="price"
+        label="Price"
+        type="number"
+        filled
         name="price"
         :error="validationErrors.price"
         error-message="Price is required"
         @update:model-value="clearFieldError('price')"
       />
-      <q-input 
-        v-model="category" 
-        label="Category" 
-        filled  
+      <q-input
+        v-model="category"
+        label="Category"
+        filled
         name="category"
         :error="validationErrors.category"
         error-message="Category is required"
@@ -151,7 +151,7 @@
 
       <!-- Image Upload Section -->
       <div class="q-mt-md">
-        <q-label class="q-mb-sm">Images (Optional - up to 5 images, 5MB each)</q-label>
+        <q-label class="q-mb-sm">Images (Required - up to 5 images, 5MB each)</q-label>
         <div class="q-mt-sm">
           <input
             ref="fileInput"
@@ -164,11 +164,15 @@
           <q-btn
             @click="$refs.fileInput.click()"
             icon="add_photo_alternate"
-            label="Choose Images"
+            label="Add Images"
             color="primary"
             outline
             class="full-width"
+            :class="{ 'error-border': validationErrors.images }"
           />
+          <div v-if="validationErrors.images" class="text-negative text-caption q-mt-xs">
+            At least one image is required
+          </div>
         </div>
 
         <!-- Image Previews -->
@@ -288,19 +292,23 @@ watch(images, (newImages) => {
 })
 
 function handleFileSelect(event) {
-  const files = Array.from(event.target.files)
+  const newFiles = Array.from(event.target.files)
+
+  // Get existing files
+  const existingFiles = images.value ? (Array.isArray(images.value) ? images.value : [images.value]) : []
 
   // Validation
   const maxFiles = 5
   const maxFileSize = 5 * 1024 * 1024 // 5MB
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 
-  if (files.length > maxFiles) {
-    message.value = `Maximum ${maxFiles} images allowed.`
+  // Check if total files exceed maximum
+  if (existingFiles.length + newFiles.length > maxFiles) {
+    message.value = `Maximum ${maxFiles} images allowed. You can add ${maxFiles - existingFiles.length} more.`
     return
   }
 
-  for (const file of files) {
+  for (const file of newFiles) {
     if (file.size > maxFileSize) {
       message.value = `Image "${file.name}" is too large. Maximum size is 5MB.`
       return
@@ -312,9 +320,11 @@ function handleFileSelect(event) {
     }
   }
 
-  // Set images and clear any previous error message
-  images.value = files.length > 0 ? files : null
+  // Combine existing and new files
+  const allFiles = [...existingFiles, ...newFiles]
+  images.value = allFiles.length > 0 ? allFiles : null
   message.value = ""
+  clearFieldError('images')
 }
 
 function removeImage(index) {
@@ -329,14 +339,15 @@ function removeImage(index) {
 
 function validateFields() {
   validationErrors.value = {}
-  
+
   if (!title.value) validationErrors.value.title = true
   if (!description.value) validationErrors.value.description = true
   if (!price.value) validationErrors.value.price = true
   if (!category.value) validationErrors.value.category = true
   if (!latitude.value || !longitude.value) validationErrors.value.location = true
   if (!condition.value) validationErrors.value.condition = true
-  
+  if (!images.value || (Array.isArray(images.value) && images.value.length === 0)) validationErrors.value.images = true
+
   return Object.keys(validationErrors.value).length === 0
 }
 
@@ -447,7 +458,7 @@ async function onMapLocationChanged(coordinates) {
 
   // Update the location display
   locationDisplay.value = `${coordinates.latitude.toFixed(4)}, ${coordinates.longitude.toFixed(4)}`
-  
+
   // Clear location error when coordinates are set
   clearFieldError('location')
 }
