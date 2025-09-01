@@ -19,6 +19,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import { MAPBOX_ACCESS_TOKEN } from '../../constants.js'
 
 const props = defineProps({
   latitude: {
@@ -43,12 +44,12 @@ let map = null
 let marker = null
 
 onMounted(() => {
-  if (!import.meta.env.VITE_MAPBOX_ACCESS_TOKEN) {
+  if (!MAPBOX_ACCESS_TOKEN) {
     console.error('Mapbox access token is required')
     return
   }
 
-  mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
+  mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN
 
   // Initialize map
   map = new mapboxgl.Map({
