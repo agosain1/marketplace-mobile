@@ -56,11 +56,14 @@ onMounted(() => {
   })
 })
 
-const addLocationMarker = () => {
+const updateLocationMarker = () => {
   if (!map || !props.latitude || !props.longitude) return
 
-  // Create a circle with a 1.5-mile radius around the location for privacy
-  const radiusInMiles = 1.5
+  // Calculate radius based on zoom level (minimum 1.5 miles, increases as zoom decreases)
+  const currentZoom = map.getZoom()
+  const baseRadius = 1.5 // minimum radius in miles
+  const zoomFactor = Math.max(1, (15 - currentZoom) * 0.5) // Scale factor based on zoom
+  const radiusInMiles = baseRadius * zoomFactor
   const radiusInMeters = radiusInMiles * 1609.34 // Convert miles to meters
   
   // Create a circle polygon using turf-like calculations
@@ -80,6 +83,17 @@ const addLocationMarker = () => {
   }
 
   const circleCoords = createCircle([props.longitude, props.latitude], radiusInMeters)
+
+  // Remove existing circle if it exists
+  if (map.getLayer('location-circle-fill')) {
+    map.removeLayer('location-circle-fill')
+  }
+  if (map.getLayer('location-circle-stroke')) {
+    map.removeLayer('location-circle-stroke')
+  }
+  if (map.getSource('location-circle')) {
+    map.removeSource('location-circle')
+  }
 
   // Add a source for the circle
   map.addSource('location-circle', {
@@ -118,6 +132,15 @@ const addLocationMarker = () => {
       'line-opacity': 0.8
     }
   })
+}
+
+const addLocationMarker = () => {
+  if (!map || !props.latitude || !props.longitude) return
+
+  updateLocationMarker()
+
+  // Listen for zoom changes to update circle size
+  map.on('zoom', updateLocationMarker)
 
   // Center the map on the location
   map.setCenter([props.longitude, props.latitude])
@@ -126,18 +149,7 @@ const addLocationMarker = () => {
 // Watch for prop changes
 watch(() => [props.latitude, props.longitude], ([newLat, newLng]) => {
   if (map && newLat && newLng) {
-    // Remove existing circle if it exists
-    if (map.getLayer('location-circle-fill')) {
-      map.removeLayer('location-circle-fill')
-    }
-    if (map.getLayer('location-circle-stroke')) {
-      map.removeLayer('location-circle-stroke')
-    }
-    if (map.getSource('location-circle')) {
-      map.removeSource('location-circle')
-    }
-    
-    // Add new circle
+    // Add new circle at new location
     addLocationMarker()
   }
 })
