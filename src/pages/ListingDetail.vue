@@ -35,12 +35,12 @@
               <q-carousel
                 v-if="listing.images.length > 1"
                 v-model="currentSlide"
-                swipeable
+                :swipeable="$q.screen.xs"
                 animated
                 arrows
                 navigation
                 height="400px"
-                class="bg-grey-1 shadow-2 rounded-borders"
+                class="bg-grey-1 shadow-2 rounded-borders carousel-with-arrows"
               >
                 <q-carousel-slide
                   v-for="(image, imgIndex) in listing.images"
@@ -336,6 +336,35 @@ export default {
 @media (max-width: 575px) {
   .map-container-responsive {
     margin-top: 0;
+  }
+}
+
+/* Enhanced carousel arrows for desktop */
+@media (min-width: 576px) {
+  .carousel-with-arrows :deep(.q-carousel__arrow) {
+    background: rgba(0, 0, 0, 0.7) !important;
+    color: white !important;
+    border-radius: 50% !important;
+    width: 50px !important;
+    height: 50px !important;
+    font-size: 24px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+  }
+  
+  .carousel-with-arrows :deep(.q-carousel__arrow:hover) {
+    background: rgba(0, 0, 0, 0.9) !important;
+    transform: translateY(-50%) scale(1.1) !important;
+  }
+  
+  .carousel-with-arrows :deep(.q-carousel__arrow--left) {
+    left: 15px !important;
+  }
+  
+  .carousel-with-arrows :deep(.q-carousel__arrow--right) {
+    right: 15px !important;
   }
 }
 </style>
