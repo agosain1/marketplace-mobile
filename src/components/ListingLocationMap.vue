@@ -59,6 +59,28 @@ onMounted(() => {
 const addLocationMarker = () => {
   if (!map || !props.latitude || !props.longitude) return
 
+  // Create a circle with a 1.5-mile radius around the location for privacy
+  const radiusInMiles = 1.5
+  const radiusInMeters = radiusInMiles * 1609.34 // Convert miles to meters
+  
+  // Create a circle polygon using turf-like calculations
+  const createCircle = (center, radiusMeters, points = 64) => {
+    const coords = []
+    const distanceX = radiusMeters / (111320 * Math.cos(center[1] * Math.PI / 180))
+    const distanceY = radiusMeters / 110540
+    
+    for (let i = 0; i < points; i++) {
+      const angle = (i / points) * 2 * Math.PI
+      const x = center[0] + (distanceX * Math.cos(angle))
+      const y = center[1] + (distanceY * Math.sin(angle))
+      coords.push([x, y])
+    }
+    coords.push(coords[0]) // Close the polygon
+    return coords
+  }
+
+  const circleCoords = createCircle([props.longitude, props.latitude], radiusInMeters)
+
   // Add a source for the circle
   map.addSource('location-circle', {
     type: 'geojson',
@@ -67,8 +89,8 @@ const addLocationMarker = () => {
       features: [{
         type: 'Feature',
         geometry: {
-          type: 'Point',
-          coordinates: [props.longitude, props.latitude]
+          type: 'Polygon',
+          coordinates: [circleCoords]
         }
       }]
     }
@@ -77,15 +99,23 @@ const addLocationMarker = () => {
   // Add circle layer
   map.addLayer({
     id: 'location-circle-fill',
-    type: 'circle',
+    type: 'fill',
     source: 'location-circle',
     paint: {
-      'circle-radius': 50, // Radius in pixels
-      'circle-color': '#4FC3F7', // Light blue color
-      'circle-opacity': 0.3,
-      'circle-stroke-width': 2,
-      'circle-stroke-color': '#29B6F6',
-      'circle-stroke-opacity': 0.8
+      'fill-color': '#4FC3F7', // Light blue color
+      'fill-opacity': 0.3
+    }
+  })
+
+  // Add circle border
+  map.addLayer({
+    id: 'location-circle-stroke',
+    type: 'line',
+    source: 'location-circle',
+    paint: {
+      'line-color': '#29B6F6',
+      'line-width': 2,
+      'line-opacity': 0.8
     }
   })
 
@@ -99,6 +129,9 @@ watch(() => [props.latitude, props.longitude], ([newLat, newLng]) => {
     // Remove existing circle if it exists
     if (map.getLayer('location-circle-fill')) {
       map.removeLayer('location-circle-fill')
+    }
+    if (map.getLayer('location-circle-stroke')) {
+      map.removeLayer('location-circle-stroke')
     }
     if (map.getSource('location-circle')) {
       map.removeSource('location-circle')
