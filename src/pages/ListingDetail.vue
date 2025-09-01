@@ -28,179 +28,112 @@
         </div>
 
         <div v-else-if="listing" class="q-pa-lg">
-          <q-card class="q-mb-lg">
-            <!-- Images Section -->
-            <div v-if="listing.images && listing.images.length > 0" class="q-mb-md">
-              <!-- Image Carousel for multiple images -->
-              <q-carousel
-                v-if="listing.images.length > 1"
-                v-model="currentSlide"
-                :swipeable="$q.screen.xs"
-                animated
-                arrows
-                navigation
-                height="400px"
-                class="bg-grey-1 shadow-2 rounded-borders carousel-with-arrows"
-              >
-                <q-carousel-slide
-                  v-for="(image, imgIndex) in listing.images"
-                  :key="imgIndex"
-                  :name="imgIndex"
-                  class="column no-wrap flex-center"
-                >
+          <div class="row q-col-gutter-lg">
+            <!-- Left side - Images -->
+            <div class="col-xs-12 col-sm-8 col-md-8 col-lg-8">
+              <q-card class="full-height">
+                <!-- Images Section -->
+                <div v-if="listing.images && listing.images.length > 0" class="full-height">
+                  <!-- Image Carousel for multiple images -->
+                  <q-carousel
+                    v-if="listing.images.length > 1"
+                    v-model="currentSlide"
+                    :swipeable="$q.screen.xs"
+                    animated
+                    arrows
+                    navigation
+                    height="600px"
+                    class="bg-grey-1 shadow-2 rounded-borders carousel-with-arrows full-height"
+                  >
+                    <q-carousel-slide
+                      v-for="(image, imgIndex) in listing.images"
+                      :key="imgIndex"
+                      :name="imgIndex"
+                      class="column no-wrap flex-center"
+                    >
+                      <q-img
+                        :src="image"
+                        :alt="`${listing.title} - Image ${imgIndex + 1}`"
+                        fit="contain"
+                        style="max-height: 600px; width: 100%;"
+                        class="rounded-borders"
+                      />
+                    </q-carousel-slide>
+                  </q-carousel>
+
+                  <!-- Single Image -->
                   <q-img
-                    :src="image"
-                    :alt="`${listing.title} - Image ${imgIndex + 1}`"
+                    v-else
+                    :src="listing.images[0]"
+                    :alt="listing.title"
                     fit="contain"
-                    style="max-height: 400px; width: 100%;"
+                    style="height: 600px; width: 100%;"
                     class="rounded-borders"
                   />
-                </q-carousel-slide>
-              </q-carousel>
 
-              <!-- Single Image -->
-              <q-img
-                v-else
-                :src="listing.images[0]"
-                :alt="listing.title"
-                fit="contain"
-                style="max-height: 400px; width: 100%;"
-                class="rounded-borders"
-              />
-
-              <!-- Image Counter -->
-              <div v-if="listing.images.length > 1" class="absolute-top-right q-ma-sm">
-                <q-chip
-                  dense
-                  color="black"
-                  text-color="white"
-                  icon="photo"
-                  :label="`${currentSlide + 1}/${listing.images.length}`"
-                />
-              </div>
-            </div>
-
-            <!-- Title and Price -->
-            <q-card-section>
-              <div class="text-h4 q-mb-sm text-blue-7">{{ listing.title }}</div>
-              <div class="text-h5 text-green-7 q-mb-md">${{ listing.price }} {{ listing.currency }}</div>
-            </q-card-section>
-
-            <!-- Details Section with Map -->
-            <q-card-section>
-              <div class="row q-col-gutter-md">
-                <!-- Left side - Details -->
-                <div class="col-xs-12 col-sm-7 col-md-7 col-lg-7">
-                  <q-list dense>
-                    <q-item>
-                      <q-item-section avatar>
-                        <q-icon name="description" color="blue-7" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="text-blue-7">Description</q-item-label>
-                        <q-item-label caption class="text-wrap text-black">{{ listing.description }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
-
-                    <q-item>
-                      <q-item-section avatar>
-                        <q-icon name="category" color="purple-6" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="text-blue-7">Category</q-item-label>
-                        <q-item-label caption class="text-black">{{ listing.category }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
-
-                    <q-item>
-                      <q-item-section avatar>
-                        <q-icon name="place" color="red-6" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="text-blue-7">Location</q-item-label>
-                        <q-item-label caption class="text-black">{{ listing.location }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
-
-                    <q-item>
-                      <q-item-section avatar>
-                        <q-icon name="star" color="amber-6" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="text-blue-7">Condition</q-item-label>
-                        <q-item-label caption class="text-black">{{ listing.condition }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
-
-                    <q-item>
-                      <q-item-section avatar>
-                        <q-icon name="visibility" color="brown-6" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="text-blue-7">Views</q-item-label>
-                        <q-item-label caption class="text-black">{{ listing.views }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
-
-                    <q-item>
-                      <q-item-section avatar>
-                        <q-icon name="person" color="green-6" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="text-blue-7">Seller</q-item-label>
-                        <q-item-label caption class="text-black">{{ listing.seller_name || 'Unknown' }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
-
-                    <q-item>
-                      <q-item-section avatar>
-                        <q-icon name="schedule" color="orange-6" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="text-blue-7">Created</q-item-label>
-                        <q-item-label caption class="text-black">{{ formatDate(listing.created_at) }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
-
-                    <q-item>
-                      <q-item-section avatar>
-                        <q-icon name="update" color="teal-6" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="text-blue-7">Last Updated</q-item-label>
-                        <q-item-label caption class="text-black">{{ formatDate(listing.updated_at) }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
-                  </q-list>
-                </div>
-
-                <!-- Right side - Location Map -->
-                <div class="col-xs-12 col-sm-5 col-md-5 col-lg-5">
-                  <div v-if="listing.latitude && listing.longitude" class="map-container-responsive">
-                    <h6 class="q-ma-none q-mb-md text-grey-8">Approximate Location</h6>
-                    <ListingLocationMap
-                      :latitude="listing.latitude"
-                      :longitude="listing.longitude"
-                      :location="listing.location"
-                      :zoom="11"
+                  <!-- Image Counter -->
+                  <div v-if="listing.images.length > 1" class="absolute-top-right q-ma-sm">
+                    <q-chip
+                      dense
+                      color="black"
+                      text-color="white"
+                      icon="photo"
+                      :label="`${currentSlide + 1}/${listing.images.length}`"
                     />
                   </div>
                 </div>
-              </div>
-            </q-card-section>
+              </q-card>
+            </div>
 
-            <!-- Actions -->
-            <q-card-actions align="right">
-              <q-btn
-                v-if="isLoggedIn && listing.seller_email !== currentUserEmail"
-                color="primary"
-                icon="message"
-                label="Message Seller"
-                @click="messageSeller"
-                class="q-ma-sm"
-              />
-            </q-card-actions>
-          </q-card>
+            <!-- Right side - All Information -->
+            <div class="col-xs-12 col-sm-4 col-md-4 col-lg-4">
+              <q-card class="q-mb-lg">
+                <!-- Title and Price -->
+                <q-card-section>
+                  <div class="row items-start justify-between">
+                    <div class="col">
+                      <div class="text-h5 q-mb-sm text-blue-7">{{ listing.title }}</div>
+                      <div class="text-h6 text-green-7 q-mb-sm">${{ listing.price }} {{ listing.currency }}</div>
+                      <div class="text-body1 text-indigo-7 q-mb-xs">Seller: {{ listing.seller_name || 'Unknown' }}</div>
+                      <div class="text-body2 text-grey-7 q-mb-xs">Category: {{ listing.category }}</div>
+                      <div class="text-body2 text-grey-7 q-mb-sm">Condition: {{ listing.condition }}</div>
+                      <div class="text-blue-7 text-h6 q-mb-xs">Description</div>
+                      <div class="text-wrap text-black text-body1 q-mb-md">{{ listing.description }}</div>
+                    </div>
+                    <div class="col-auto">
+                      <q-btn
+                        v-if="isLoggedIn && listing.seller_email !== currentUserEmail"
+                        color="primary"
+                        icon="message"
+                        label="Message Seller"
+                        @click="messageSeller"
+                        size="md"
+                      />
+                    </div>
+                  </div>
+                </q-card-section>
+
+                <!-- Location Map Section -->
+                <q-card-section v-if="listing.latitude && listing.longitude">
+                  <h6 class="q-ma-none q-mb-md text-grey-8">Approximate Location: {{ listing.location }}</h6>
+                  <ListingLocationMap
+                    :latitude="listing.latitude"
+                    :longitude="listing.longitude"
+                    :location="listing.location"
+                    :zoom="11"
+                  />
+                </q-card-section>
+
+                <!-- Additional Info Section -->
+                <q-card-section>
+                  <div class="text-body2 text-grey-7 q-mb-xs">Views: {{ listing.views }}</div>
+                  <div class="text-body2 text-grey-7 q-mb-xs">Created: {{ formatDate(listing.created_at) }}</div>
+                  <div class="text-body2 text-grey-7">Last Updated: {{ formatDate(listing.updated_at) }}</div>
+                </q-card-section>
+
+              </q-card>
+            </div>
+          </div>
         </div>
       </q-page>
     </q-page-container>
@@ -327,18 +260,6 @@ export default {
 </script>
 
 <style scoped>
-@media (min-width: 576px) {
-  .map-container-responsive {
-    margin-top: -150px;
-  }
-}
-
-@media (max-width: 575px) {
-  .map-container-responsive {
-    margin-top: 0;
-  }
-}
-
 /* Enhanced carousel arrows for desktop */
 @media (min-width: 576px) {
   .carousel-with-arrows :deep(.q-carousel__arrow) {
