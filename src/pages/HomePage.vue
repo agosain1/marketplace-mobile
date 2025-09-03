@@ -47,6 +47,14 @@
 
     <q-page-container>
       <q-page>
+        <!-- Interactive Map -->
+        <div class="q-mb-sm">
+            <LocationMap
+            :latitude="37"
+            :longitude="-121"
+          />
+        </div>
+
         <div class="q-pa-lg">
           <h4>Current Listings</h4>
           <div class="row">
@@ -98,7 +106,7 @@
               </div>
               <div class="text-h6">{{ listing.title }}</div>
               <div class="text-subtitle2">{{ "$" + listing.price + " " + listing.currency }}</div>
-              <div class="text-subtitle2">{{ "Location: " + listing.location }}</div>
+              <div class="text-subtitle2">{{ listing.location }}</div>
 
             </q-card-section>
             <q-card-actions align="right">
@@ -134,11 +142,13 @@ import axios from "axios"
 import { API_URL } from '../../constants.js'
 import { formatDate } from '../utils/dateUtils.js'
 import MessageSellerDialog from 'src/components/MessageSellerDialog.vue'
+import LocationMap from 'components/LocationMap.vue'
 
 
 export default {
   name: "IndexPage",
   components: {
+    LocationMap,
     MessageSellerDialog
   },
   data() {
