@@ -228,14 +228,16 @@
 import { ref, onMounted, watch } from "vue"
 import { useRouter } from "vue-router"
 import { api } from 'src/boot/axios'
+import { useAuthStore } from '../stores/auth'
 import { locationService } from '../services/locationService.js'
 import LocationMap from '../components/LocationMap.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // Check authentication on mount
 onMounted(() => {
-  if (!localStorage.getItem('auth_token')) {
+  if (!authStore.isLoggedIn) {
     router.push('/login')
   }
 })
@@ -362,8 +364,7 @@ async function addListing() {
     return
   }
 
-  const token = localStorage.getItem('auth_token')
-  if (!token) {
+  if (!authStore.isLoggedIn) {
     message.value = "Please log in to add a listing"
     router.push('/login')
     return
@@ -394,8 +395,7 @@ async function addListing() {
 
     const response = await api.post(`listings`, formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'multipart/form-data'
       }
     })
 

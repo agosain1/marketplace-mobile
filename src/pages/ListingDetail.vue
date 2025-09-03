@@ -199,6 +199,7 @@
 
 <script>
 import { api } from 'src/boot/axios'
+import { useAuthStore } from '../stores/auth'
 import { formatDate } from '../utils/dateUtils.js'
 import MessageSellerDialog from 'src/components/MessageSellerDialog.vue'
 
@@ -221,7 +222,8 @@ export default {
   },
   computed: {
     isLoggedIn() {
-      return !!localStorage.getItem('auth_token')
+      const authStore = useAuthStore()
+      return authStore.isLoggedIn
     },
     listingId() {
       return this.$route.params.id
@@ -281,9 +283,8 @@ export default {
       }
 
       try {
-        const token = localStorage.getItem('auth_token')
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        this.currentUserEmail = payload.email
+        const authStore = useAuthStore()
+        this.currentUserEmail = authStore.user?.email || null
       } catch (e) {
         console.error("Error getting current user:", e)
         this.currentUserEmail = null

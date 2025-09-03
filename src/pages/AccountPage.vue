@@ -143,6 +143,7 @@
 
 <script>
 import { api } from 'src/boot/axios'
+import { useAuthStore } from '../stores/auth'
 
 export default {
   name: "AccountPage",
@@ -167,33 +168,15 @@ export default {
   },
   methods: {
     loadUser() {
-      const userStr = localStorage.getItem('user')
-      if (userStr) {
-        try {
-          this.user = JSON.parse(userStr)
-        } catch (e) {
-          console.error('Error parsing user data:', e)
-          this.user = null
-        }
-      }
+      const authStore = useAuthStore()
+      this.user = authStore.user
     },
 
     async loadProfile() {
       if (!this.user) return
 
       try {
-        const token = localStorage.getItem('auth_token')
-        if (!token) {
-          this.goToLogin()
-          return
-        }
-
-        const response = await api.get(`auth/profile`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-
+        const response = await api.get(`auth/profile`)
         this.profile = response.data
       } catch (error) {
         console.error('Error loading profile:', error)
@@ -224,19 +207,9 @@ export default {
       this.errorMessage = ''
 
       try {
-        const token = localStorage.getItem('auth_token')
-        if (!token) {
-          this.goToLogin()
-          return
-        }
-
         await api.put(`auth/profile`, {
           firstName: this.editForm.firstName,
           lastName: this.editForm.lastName
-        }, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
         })
 
         // Update profile data
@@ -259,9 +232,9 @@ export default {
       }
     },
 
-    logout() {
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('user')
+    async logout() {
+      const authStore = useAuthStore()
+      await authStore.logout()
       this.$router.push('/')
     },
 
@@ -281,22 +254,11 @@ export default {
 
     async deleteAccount() {
       try {
-        const token = localStorage.getItem('auth_token')
-        if (!token) {
-          alert('Please log in again to delete your account')
-          this.$router.push('/login')
-          return
-        }
-
-        await api.delete(`auth/delete-account`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        await api.delete(`auth/delete-account`)
 
         alert('Your account has been successfully deleted.')
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('user')
+        const authStore = useAuthStore()
+        authStore.clearAuth()
         this.$router.push('/')
 
       } catch (e) {

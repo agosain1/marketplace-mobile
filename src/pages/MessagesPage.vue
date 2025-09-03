@@ -193,8 +193,10 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from 'src/boot/axios'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // Reactive data
 const conversations = ref([])
@@ -224,17 +226,12 @@ const refreshMessages = async () => {
 const loadConversations = async () => {
   try {
     // Get user messages and group them by conversation
-    const token = localStorage.getItem('auth_token')
-    if (!token) {
+    if (!authStore.isLoggedIn) {
       router.push('/login')
       return
     }
 
-    const response = await api.get('/messages/user-messages', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
+    const response = await api.get('/messages/user-messages')
 
     const messages = response.data
 
@@ -288,12 +285,7 @@ const selectConversation = async (email) => {
 
 const loadConversation = async (email) => {
   try {
-    const token = localStorage.getItem('auth_token')
-    const response = await api.get(`/messages/conversation/${email}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
+    const response = await api.get(`/messages/conversation/${email}`)
 
     currentMessages.value = response.data
 
@@ -304,17 +296,13 @@ const loadConversation = async (email) => {
 
     for (const message of unreadMessages) {
       try {
-        await api.patch(`/messages/${message.message_id}/read`, {}, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        await api.patch(`/messages/${message.message_id}/read`)
       } catch (error) {
         console.error('Error marking message as read:', error)
       }
     }
 
-    // Trigger unread count update on other pages
+    // Trigger unread count update on other pages (keep this for cross-component communication)
     if (unreadMessages.length > 0) {
       localStorage.setItem('messages_updated', Date.now().toString())
     }
@@ -336,14 +324,9 @@ const sendMessage = async () => {
   sendingMessage.value = true
 
   try {
-    const token = localStorage.getItem('auth_token')
     const response = await api.post('/messages/send', {
       receiver_email: selectedConversation.value,
       content: newMessage.value.trim()
-    }, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
     })
 
     const sentMessage = response.data
@@ -372,14 +355,9 @@ const sendNewMessage = async () => {
   sendingMessage.value = true
 
   try {
-    const token = localStorage.getItem('auth_token')
     await api.post('/messages/send', {
       receiver_email: newMessageEmail.value.trim(),
       content: newMessageContent.value.trim()
-    }, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
     })
 
     const recipientEmail = newMessageEmail.value.trim()
@@ -417,19 +395,21 @@ const formatTime = (dateString) => {
 
 // Load data on mount
 onMounted(async () => {
-  // Get current user ID from token
-  const token = localStorage.getItem('auth_token')
-  if (!token) {
+  // Get current user ID from auth store
+  if (!authStore.isLoggedIn) {
     router.push('/login')
     return
   }
 
   try {
-    // Decode JWT to get user ID (simplified - in production use a proper JWT library)
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    currentUserId.value = payload.uuid
+    currentUserId.value = authStore.user?.id
+    if (!currentUserId.value) {
+      console.error('No user ID found in auth store')
+      router.push('/login')
+      return
+    }
   } catch (error) {
-    console.error('Error parsing token:', error)
+    console.error('Error getting user from auth store:', error)
     router.push('/login')
     return
   }

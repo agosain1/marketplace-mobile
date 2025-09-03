@@ -157,6 +157,7 @@
 
 <script>
 import { api } from 'src/boot/axios'
+import { useAuthStore } from '../stores/auth'
 import { formatDate } from '../utils/dateUtils.js'
 
 
@@ -172,24 +173,20 @@ export default {
   },
   computed: {
     isLoggedIn() {
-      return !!localStorage.getItem('auth_token')
+      const authStore = useAuthStore()
+      return authStore.isLoggedIn
     }
   },
   methods: {
     async getListings() {
       try {
-        const token = localStorage.getItem('auth_token')
-        if (!token) {
+        if (!this.isLoggedIn) {
           alert('Please log in again.')
           this.$router.push('/login')
           return
         }
 
-        const res = await api.get(`listings/my_listings`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const res = await api.get(`listings/my_listings`)
         this.listings = res.data
 
         // Initialize image slides for each listing
@@ -231,12 +228,7 @@ export default {
       }
 
       try {
-        const token = localStorage.getItem('auth_token')
-        const res = await api.get(`messages/unread-count`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const res = await api.get(`messages/unread-count`)
         this.unreadCount = res.data.unread_count || 0
       } catch (e) {
         console.error("Error fetching unread count:", e)
@@ -252,19 +244,14 @@ export default {
         // Set loading state for this specific listing
         this.listings[index].removing = true
 
-        const token = localStorage.getItem('auth_token')
-        if (!token) {
+        if (!this.isLoggedIn) {
           alert('Please log in again.')
           this.$router.push('/login')
           return
         }
 
         // Call API to delete listing
-        await api.delete(`listings/${listingId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        await api.delete(`listings/${listingId}`)
 
         // Remove listing from local array
         this.listings.splice(index, 1)
@@ -275,8 +262,8 @@ export default {
 
         // Handle auth errors
         if (error.response?.status === 401 || error.response?.status === 403) {
-          localStorage.removeItem('auth_token')
-          localStorage.removeItem('user')
+          const authStore = useAuthStore()
+          authStore.clearAuth()
           this.$router.push('/login')
           return
         }

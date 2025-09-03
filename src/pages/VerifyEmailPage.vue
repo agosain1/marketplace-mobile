@@ -77,6 +77,7 @@
 
 <script>
 import { api } from 'src/boot/axios'
+import { useAuthStore } from '../stores/auth'
 
 export default {
   name: "VerifyEmailPage",
@@ -93,16 +94,13 @@ export default {
   },
 
   mounted() {
-    // Get email from route params or localStorage
-    this.email = this.$route.params.email || localStorage.getItem('pendingVerificationEmail')
+    // Get email from route params
+    this.email = this.$route.params.email
 
     if (!this.email) {
       this.$router.push('/login')
       return
     }
-
-    // Store email in localStorage in case user refreshes
-    localStorage.setItem('pendingVerificationEmail', this.email)
   },
 
   beforeUnmount() {
@@ -127,14 +125,10 @@ export default {
           code: this.verificationCode
         })
 
-        if (response.data.token) {
-          // Store token and user data
-          localStorage.setItem('auth_token', response.data.token)
-          localStorage.setItem('user', JSON.stringify(response.data.user))
-
-          // Clear pending verification email
-          localStorage.removeItem('pendingVerificationEmail')
-
+        if (response.data.success) {
+          // Cookie is set automatically by backend, just update store
+          const authStore = useAuthStore()
+          authStore.setAuth(response.data.user)
           this.$router.push('/')
         }
       } catch (error) {
