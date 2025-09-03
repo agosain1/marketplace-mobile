@@ -31,7 +31,6 @@ const props = defineProps({
 
 const mapContainer = ref(null)
 let map = null
-let marker = null
 
 onMounted(() => {
   if (!MAPBOX_ACCESS_TOKEN) {
@@ -65,13 +64,13 @@ const updateLocationMarker = () => {
   const zoomFactor = Math.max(1, (15 - currentZoom) * 0.5) // Scale factor based on zoom
   const radiusInMiles = baseRadius * zoomFactor
   const radiusInMeters = radiusInMiles * 1609.34 // Convert miles to meters
-  
+
   // Create a circle polygon using turf-like calculations
   const createCircle = (center, radiusMeters, points = 64) => {
     const coords = []
     const distanceX = radiusMeters / (111320 * Math.cos(center[1] * Math.PI / 180))
     const distanceY = radiusMeters / 110540
-    
+
     for (let i = 0; i < points; i++) {
       const angle = (i / points) * 2 * Math.PI
       const x = center[0] + (distanceX * Math.cos(angle))
