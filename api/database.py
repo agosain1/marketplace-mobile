@@ -2,7 +2,8 @@ from dotenv import load_dotenv
 import os
 import psycopg
 from psycopg.rows import dict_row
-from contextlib import contextmanager
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
 
@@ -11,6 +12,11 @@ DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
+
+# SQLAlchemy setup - explicitly use psycopg driver
+DATABASE_URL = f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db_connection():
     """Returns a database connection"""
@@ -23,19 +29,10 @@ def get_db_connection():
         row_factory=dict_row
     )
 
-@contextmanager
-def get_db_cursor():
-    """Context manager for database operations"""
-    conn = get_db_connection()
-    cursor = None
+def get_db():
+    """Dependency function for SQLAlchemy sessions"""
+    db = SessionLocal()
     try:
-        cursor = conn.cursor()
-        yield cursor
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
+        yield db
     finally:
-        if cursor:
-            cursor.close()
-        conn.close()
+        db.close()
