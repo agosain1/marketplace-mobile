@@ -7,17 +7,16 @@
 
       <q-card-section>
         <div class="q-mb-md">
-          <div class="text-subtitle2 text-weight-medium">To: {{ seller.name || seller.email }}</div>
-          <div class="text-caption text-grey-6">{{ seller.email }}</div>
+          <div class="text-subtitle2 text-weight-medium">To: {{ seller.name || "User" }}</div>
         </div>
-        
+
         <div class="q-mb-md">
           <div class="text-subtitle2 text-weight-medium">About: {{ listing.title }}</div>
           <div class="text-caption text-grey-6">${{ listing.price }} {{ listing.currency }}</div>
         </div>
 
         <!-- Success Message -->
-        <q-banner 
+        <q-banner
           v-if="messageSent"
           class="bg-positive text-white q-mb-md"
           rounded
