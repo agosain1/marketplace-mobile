@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 import re
+import math
 
 load_dotenv()
 
@@ -179,3 +180,34 @@ def search_location_suggestions(query, limit=5):
                 })
     
     return suggestions
+
+def get_bounding_box_corners(lat, lon, distance_miles):
+    """
+    Returns 4 corner coordinates (NE, NW, SE, SW) of a square
+    bounding box `distance_miles` away from the center in all directions.
+    """
+    # Approximate radius of Earth in miles
+    R = 3958.8
+
+    # Convert distance in miles to angular distance in radians
+    delta_lat = distance_miles / R
+    delta_lon = distance_miles / (R * math.cos(math.radians(lat)))
+
+    # Convert angular distances to degrees
+    delta_lat_deg = math.degrees(delta_lat)
+    delta_lon_deg = math.degrees(delta_lon)
+
+    # Compute corners
+    northeast = (lat + delta_lat_deg, lon + delta_lon_deg)
+    northwest = (lat + delta_lat_deg, lon - delta_lon_deg)
+    southeast = (lat - delta_lat_deg, lon + delta_lon_deg)
+    southwest = (lat - delta_lat_deg, lon - delta_lon_deg)
+
+    return {
+        "northeast": northeast,
+        "northwest": northwest,
+        "southeast": southeast,
+        "southwest": southwest
+    }
+
+# {'northeast': (37.144730169528856, -120.81877819392193), 'northwest': (37.144730169528856, -121.18122180607807), 'southeast': (36.855269830471144, -120.81877819392193), 'southwest': (36.855269830471144, -121.18122180607807)}

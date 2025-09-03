@@ -71,6 +71,52 @@ onMounted(() => {
     })
   })
 
+  // temp bounding box code
+
+  map.on('load', () => {
+  const coordinates = [
+    [-121.18122180607807, 37.144730169528856], // northwest
+    [-120.81877819392193, 37.144730169528856], // northeast
+    [-120.81877819392193, 36.855269830471144], // southeast
+    [-121.18122180607807, 36.855269830471144], // southwest
+    [-121.18122180607807, 37.144730169528856]  // back to northwest (close polygon)
+  ];
+
+  map.addSource('custom-box', {
+    type: 'geojson',
+    data: {
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [coordinates]
+      }
+    }
+  });
+
+  // Fill (semi-transparent)
+  map.addLayer({
+    id: 'custom-box-fill',
+    type: 'fill',
+    source: 'custom-box',
+    paint: {
+      'fill-color': '#3b82f6',
+      'fill-opacity': 0.2
+    }
+  });
+
+  // Outline
+  map.addLayer({
+    id: 'custom-box-outline',
+    type: 'line',
+    source: 'custom-box',
+    paint: {
+      'line-color': '#1e40af',
+      'line-width': 2
+    }
+  });
+});
+
+
   // If we have initial coordinates, set them
   if (props.latitude && props.longitude) {
     map.setCenter([props.longitude, props.latitude])
