@@ -156,8 +156,7 @@
 </template>
 
 <script>
-import axios from "axios"
-import { API_URL } from '../../constants.js'
+import { api } from 'src/boot/axios'
 import { formatDate } from '../utils/dateUtils.js'
 
 
@@ -186,7 +185,7 @@ export default {
           return
         }
 
-        const res = await axios.get(`${API_URL}listings/my_listings`, {
+        const res = await api.get(`listings/my_listings`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -233,7 +232,7 @@ export default {
 
       try {
         const token = localStorage.getItem('auth_token')
-        const res = await axios.get(`${API_URL}messages/unread-count`, {
+        const res = await api.get(`messages/unread-count`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -261,7 +260,7 @@ export default {
         }
 
         // Call API to delete listing
-        await axios.delete(`${API_URL}listings/${listingId}`, {
+        await api.delete(`listings/${listingId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

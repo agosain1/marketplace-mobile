@@ -47,14 +47,6 @@
 
     <q-page-container>
       <q-page>
-        <!-- Interactive Map -->
-        <div class="q-mb-sm">
-            <LocationMap
-            :latitude="37"
-            :longitude="-121"
-          />
-        </div>
-
         <div class="q-pa-lg">
           <h4>Current Listings</h4>
           <div class="row">
@@ -138,17 +130,14 @@
 </template>
 
 <script>
-import axios from "axios"
-import { API_URL } from '../../constants.js'
+import { api } from 'src/boot/axios'
 import { formatDate } from '../utils/dateUtils.js'
 import MessageSellerDialog from 'src/components/MessageSellerDialog.vue'
-import LocationMap from 'components/LocationMap.vue'
 
 
 export default {
   name: "IndexPage",
   components: {
-    LocationMap,
     MessageSellerDialog
   },
   data() {
@@ -171,7 +160,7 @@ export default {
   methods: {
     async getListings() {
       try {
-        const res = await axios.get(`${API_URL}listings`)
+        const res = await api.get(`listings`)
         console.log("API response:", res.data) // Debug log
 
         // Ensure listings is always an array
@@ -225,7 +214,7 @@ export default {
 
       try {
         const token = localStorage.getItem('auth_token')
-        const res = await axios.get(`${API_URL}messages/unread-count`, {
+        const res = await api.get(`messages/unread-count`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

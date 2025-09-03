@@ -108,8 +108,8 @@
         </div>
 
         <!-- Google Sign-In -->
-        <GoogleSignIn 
-          @success="handleGoogleSignInSuccess" 
+        <GoogleSignIn
+          @success="handleGoogleSignInSuccess"
           @error="handleGoogleSignInError"
         />
 
@@ -128,8 +128,7 @@
 </template>
 
 <script>
-import axios from "axios"
-import { API_URL } from '../../constants.js'
+import { api } from 'src/boot/axios'
 import GoogleSignIn from '../components/GoogleSignIn.vue'
 
 export default {
@@ -210,7 +209,7 @@ export default {
     async login() {
       console.log('Login attempt:', { email: this.form.email, api_url: API_URL })
       try {
-        const response = await axios.post(`${API_URL}auth/login`, {
+        const response = await api.post(`auth/login`, {
           email: this.form.email,
           password: this.form.password
         })
@@ -240,7 +239,7 @@ export default {
     },
 
     async register() {
-      const response = await axios.post(`${API_URL}auth/register`, {
+      const response = await api.post(`auth/register`, {
         fname: this.form.firstName,
         lname: this.form.lastName,
         email: this.form.email,
@@ -264,9 +263,9 @@ export default {
 
       try {
         console.log('Google Sign-In successful:', googleData)
-        
+
         // Send the Google ID token to our backend
-        const response = await axios.post(`${API_URL}auth/google`, {
+        const response = await api.post(`auth/google`, {
           idToken: googleData.idToken,
           profile: googleData.profile
         })
