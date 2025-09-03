@@ -227,8 +227,7 @@
 <script setup>
 import { ref, onMounted, watch } from "vue"
 import { useRouter } from "vue-router"
-import axios from "axios"
-import { API_URL } from '../../constants.js'
+import { api } from 'src/boot/axios'
 import { locationService } from '../services/locationService.js'
 import LocationMap from '../components/LocationMap.vue'
 
@@ -393,7 +392,7 @@ async function addListing() {
       })
     }
 
-    const response = await axios.post(`${API_URL}listings`, formData, {
+    const response = await api.post(`listings`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
         'Authorization': `Bearer ${token}`
@@ -469,7 +468,7 @@ async function searchLocation() {
   searchingLocation.value = true
 
   try {
-    const response = await axios.get(`${API_URL}listings/search-location/${encodeURIComponent(locationSearch.value.trim())}`)
+    const response = await api.get(`listings/search-location/${encodeURIComponent(locationSearch.value.trim())}`)
 
     if (response.data) {
       latitude.value = response.data.latitude
@@ -508,7 +507,7 @@ async function onLocationInput() {
 
   searchTimeout = setTimeout(async () => {
     try {
-      const response = await axios.get(`${API_URL}listings/location-suggestions/${encodeURIComponent(query)}`)
+      const response = await api.get(`listings/location-suggestions/${encodeURIComponent(query)}`)
       locationSuggestions.value = response.data.suggestions || []
       showSuggestions.value = locationSuggestions.value.length > 0
     } catch (error) {

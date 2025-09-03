@@ -15,7 +15,7 @@
         <div v-if="user && profile" class="q-gutter-md">
           <!-- Profile Section -->
           <div class="text-h6 q-mb-md">Profile Information</div>
-          
+
           <div v-if="errorMessage" class="q-mb-md">
             <q-banner :class="errorMessage.includes('successfully') ? 'bg-positive text-white' : 'bg-negative text-white'">
               {{ errorMessage }}
@@ -43,20 +43,20 @@
                 />
               </div>
             </div>
-            
+
             <div class="row q-gutter-sm">
-              <q-btn 
-                type="submit" 
-                color="positive" 
+              <q-btn
+                type="submit"
+                color="positive"
                 icon="save"
                 :loading="loading"
                 :disable="!editForm.firstName || !editForm.lastName"
               >
                 Save Changes
               </q-btn>
-              <q-btn 
-                color="grey" 
-                outline 
+              <q-btn
+                color="grey"
+                outline
                 icon="cancel"
                 @click="cancelEdit"
                 :disable="loading"
@@ -69,12 +69,12 @@
           <div v-else>
             <div class="q-mb-sm">
               <strong>Name:</strong> {{ profile.firstName }} {{ profile.lastName }}
-              <q-btn 
-                flat 
-                dense 
-                round 
-                icon="edit" 
-                size="sm" 
+              <q-btn
+                flat
+                dense
+                round
+                icon="edit"
+                size="sm"
                 class="q-ml-sm"
                 @click="startEdit"
                 color="primary"
@@ -82,11 +82,11 @@
             </div>
             <div class="q-mb-sm">
               <strong>Email:</strong> {{ profile.email }}
-              <q-chip 
-                v-if="profile.isGoogleUser" 
-                size="sm" 
-                color="blue" 
-                text-color="white" 
+              <q-chip
+                v-if="profile.isGoogleUser"
+                size="sm"
+                color="blue"
+                text-color="white"
                 icon="account_circle"
                 class="q-ml-sm"
               >
@@ -142,8 +142,7 @@
 </template>
 
 <script>
-import axios from "axios"
-import { API_URL } from '../../constants.js'
+import { api } from 'src/boot/axios'
 
 export default {
   name: "AccountPage",
@@ -181,7 +180,7 @@ export default {
 
     async loadProfile() {
       if (!this.user) return
-      
+
       try {
         const token = localStorage.getItem('auth_token')
         if (!token) {
@@ -189,7 +188,7 @@ export default {
           return
         }
 
-        const response = await axios.get(`${API_URL}auth/profile`, {
+        const response = await api.get(`auth/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -231,7 +230,7 @@ export default {
           return
         }
 
-        await axios.put(`${API_URL}auth/profile`, {
+        await api.put(`auth/profile`, {
           firstName: this.editForm.firstName,
           lastName: this.editForm.lastName
         }, {
@@ -243,10 +242,10 @@ export default {
         // Update profile data
         this.profile.firstName = this.editForm.firstName
         this.profile.lastName = this.editForm.lastName
-        
+
         this.editMode = false
         this.errorMessage = 'Profile updated successfully!'
-        
+
         // Clear success message after 3 seconds
         setTimeout(() => {
           this.errorMessage = ''
@@ -289,7 +288,7 @@ export default {
           return
         }
 
-        await axios.delete(`${API_URL}auth/delete-account`, {
+        await api.delete(`auth/delete-account`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from fastapi import APIRouter, HTTPException, status, Depends, Header
+from fastapi import APIRouter, HTTPException, status, Depends, Header, Response, Request
 import bcrypt
 import jwt
 import datetime
@@ -79,15 +79,16 @@ def create_jwt_token(user_id, email: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm = JWT_ALGORITHM)
 
 
-def verify_jwt_token(authorization: Optional[str] = Header(None)):
-    """Verify JWT token from Authorization header"""
-    if not authorization or not authorization.startswith('Bearer '):
+def verify_jwt_token(request: Request):
+    """Verify JWT token from HTTP-only cookie"""
+    token = request.cookies.get("auth_token")
+    
+    if not token:
         raise HTTPException(
             status_code = status.HTTP_401_UNAUTHORIZED,
-            detail = "Missing or invalid authorization header"
+            detail = "No authentication token found"
         )
 
-    token = authorization.split(' ')[1]
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms = [JWT_ALGORITHM])
         return payload
@@ -103,9 +104,9 @@ def verify_jwt_token(authorization: Optional[str] = Header(None)):
         )
 
 
-def verify_jwt_token_and_email(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)):
+def verify_jwt_token_and_email(request: Request, db: Session = Depends(get_db)):
     """Verify JWT token and check if email is verified"""
-    token_data = verify_jwt_token(authorization)
+    token_data = verify_jwt_token(request)
 
     user = db.query(Users).filter(Users.id == token_data['uuid']).first()
     
@@ -153,7 +154,7 @@ def store_verification_code(user_id, code: str, db: Session):
 
 
 @router.post('/login')
-def login(login: Login, db: Session = Depends(get_db)):
+def login(login: Login, response: Response, db: Session = Depends(get_db)):
     # Check if user exists
     user = db.query(Users).filter(Users.email == login.email).first()
     
@@ -198,13 +199,27 @@ def login(login: Login, db: Session = Depends(get_db)):
             headers = {"X-Verification-Email": user.email}
         )
 
-    # If user is verified, create JWT token
+    # If user is verified, create JWT token and set HTTP-only cookie
     token = create_jwt_token(user.id, user.email)
+    
+    # Set HTTP-only cookie with secure flags (secure=False for development)
+    is_production = os.getenv("NODE_ENV") == "production"
+    response.set_cookie(
+        key="auth_token",
+        value=token,
+        max_age=7 * 24 * 60 * 60,  # 7 days in seconds
+        httponly=True,
+        secure=is_production,  # Only secure in production (HTTPS)
+        samesite="lax"
+    )
+    
     return {
-        "token": token,
+        "success": True,
         "user": {
             "id": str(user.id),
-            "email": user.email
+            "email": user.email,
+            "firstName": user.fname,
+            "lastName": user.lname
         }
     }
 
@@ -249,7 +264,7 @@ def register(register: Register, db: Session = Depends(get_db)):
 
 
 @router.post('/verify-email')
-def verify_email(verify: VerifyEmail, db: Session = Depends(get_db)):
+def verify_email(verify: VerifyEmail, response: Response, db: Session = Depends(get_db)):
     # Find user by email
     user = db.query(Users).filter(Users.email == verify.email).first()
 
@@ -283,15 +298,28 @@ def verify_email(verify: VerifyEmail, db: Session = Depends(get_db)):
     user.email_verified = True
     db.commit()
 
-    # Create JWT token
+    # Create JWT token and set HTTP-only cookie
     token = create_jwt_token(user.id, verify.email)
+    
+    # Set HTTP-only cookie with secure flags (secure=False for development)
+    is_production = os.getenv("NODE_ENV") == "production"
+    response.set_cookie(
+        key="auth_token",
+        value=token,
+        max_age=7 * 24 * 60 * 60,  # 7 days in seconds
+        httponly=True,
+        secure=is_production,  # Only secure in production (HTTPS)
+        samesite="lax"
+    )
 
     return {
+        "success": True,
         "message": "Email verified successfully",
-        "token": token,
         "user": {
             "id": str(user.id),
-            "email": verify.email
+            "email": verify.email,
+            "firstName": user.fname,
+            "lastName": user.lname
         }
     }
 
@@ -427,8 +455,46 @@ def update_profile(profile_data: UpdateProfile, token_data: dict = Depends(verif
     }
 
 
+@router.get('/validate-token')
+def validate_token(token_data: dict = Depends(verify_jwt_token), db: Session = Depends(get_db)):
+    """Validate current authentication token"""
+    user_id = token_data['uuid']
+    
+    user = db.query(Users).filter(Users.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    return {
+        "success": True,
+        "user": {
+            "id": str(user.id),
+            "email": user.email,
+            "firstName": user.fname,
+            "lastName": user.lname
+        }
+    }
+
+
+@router.post('/logout')
+def logout(response: Response):
+    """Logout user by clearing HTTP-only cookie"""
+    is_production = os.getenv("NODE_ENV") == "production"
+    response.delete_cookie(
+        key="auth_token",
+        httponly=True,
+        secure=is_production,
+        samesite="lax"
+    )
+    
+    return {"success": True, "message": "Logged out successfully"}
+
+
 @router.post('/google')
-def google_signin(google_auth: GoogleAuth, db: Session = Depends(get_db)):
+def google_signin(google_auth: GoogleAuth, response: Response, db: Session = Depends(get_db)):
     """Authenticate user with Google ID token"""
     try:
         # Verify the Google ID token
@@ -473,13 +539,27 @@ def google_signin(google_auth: GoogleAuth, db: Session = Depends(get_db)):
                 existing_user.email_verified = True
                 db.commit()
 
-            # Create JWT token for existing user
+            # Create JWT token and set HTTP-only cookie for existing user
             token = create_jwt_token(existing_user.id, existing_user.email)
+            
+            # Set HTTP-only cookie with secure flags (secure=False for development)
+            is_production = os.getenv("NODE_ENV") == "production"
+            response.set_cookie(
+                key="auth_token",
+                value=token,
+                max_age=7 * 24 * 60 * 60,  # 7 days in seconds
+                httponly=True,
+                secure=is_production,  # Only secure in production (HTTPS)
+                samesite="lax"
+            )
+            
             return {
-                "token": token,
+                "success": True,
                 "user": {
                     "id": str(existing_user.id),
-                    "email": existing_user.email
+                    "email": existing_user.email,
+                    "firstName": existing_user.fname,
+                    "lastName": existing_user.lname
                 }
             }
         else:
@@ -497,13 +577,27 @@ def google_signin(google_auth: GoogleAuth, db: Session = Depends(get_db)):
             db.commit()
             db.refresh(new_user)
 
-            # Create JWT token for new user
+            # Create JWT token and set HTTP-only cookie for new user
             token = create_jwt_token(new_user.id, new_user.email)
+            
+            # Set HTTP-only cookie with secure flags (secure=False for development)
+            is_production = os.getenv("NODE_ENV") == "production"
+            response.set_cookie(
+                key="auth_token",
+                value=token,
+                max_age=7 * 24 * 60 * 60,  # 7 days in seconds
+                httponly=True,
+                secure=is_production,  # Only secure in production (HTTPS)
+                samesite="lax"
+            )
+            
             return {
-                "token": token,
+                "success": True,
                 "user": {
                     "id": str(new_user.id),
-                    "email": new_user.email
+                    "email": new_user.email,
+                    "firstName": new_user.fname,
+                    "lastName": new_user.lname
                 }
             }
 

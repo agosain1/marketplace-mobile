@@ -198,8 +198,7 @@
 </template>
 
 <script>
-import axios from "axios"
-import { API_URL } from '../../constants.js'
+import { api } from 'src/boot/axios'
 import { formatDate } from '../utils/dateUtils.js'
 import MessageSellerDialog from 'src/components/MessageSellerDialog.vue'
 
@@ -234,7 +233,7 @@ export default {
         this.loading = true
         this.error = null
 
-        const res = await axios.get(`${API_URL}listings/${this.listingId}`)
+        const res = await api.get(`listings/${this.listingId}`)
         this.listing = res.data
       } catch (e) {
         console.error("Error fetching listing:", e)

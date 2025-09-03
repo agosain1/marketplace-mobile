@@ -76,8 +76,7 @@
 </template>
 
 <script>
-import axios from "axios"
-import { API_URL } from '../../constants.js'
+import { api } from 'src/boot/axios'
 
 export default {
   name: "VerifyEmailPage",
@@ -123,7 +122,7 @@ export default {
       this.errorMessage = ''
 
       try {
-        const response = await axios.post(`${API_URL}auth/verify-email`, {
+        const response = await api.post(`auth/verify-email`, {
           email: this.email,
           code: this.verificationCode
         })
@@ -151,7 +150,7 @@ export default {
       this.errorMessage = ''
 
       try {
-        await axios.post(`${API_URL}auth/resend-verification`, {
+        await api.post(`auth/resend-verification`, {
           email: this.email
         })
 
