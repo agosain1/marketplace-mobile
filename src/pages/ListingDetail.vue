@@ -90,7 +90,7 @@
               <q-card class="q-mb-lg">
                 <!-- Title and Price -->
                 <q-card-section>
-                  <div class="row items-start justify-between">
+                  <div class="">
                     <div class="col">
                       <div class="text-h5 q-mb-sm text-blue-7">{{ listing.title }}</div>
                       <div class="text-h6 text-green-7 q-mb-sm">${{ listing.price }} {{ listing.currency }}</div>
@@ -274,16 +274,16 @@ export default {
     top: 50% !important;
     transform: translateY(-50%) !important;
   }
-  
+
   .carousel-with-arrows :deep(.q-carousel__arrow:hover) {
     background: rgba(0, 0, 0, 0.9) !important;
     transform: translateY(-50%) scale(1.1) !important;
   }
-  
+
   .carousel-with-arrows :deep(.q-carousel__arrow--left) {
     left: 15px !important;
   }
-  
+
   .carousel-with-arrows :deep(.q-carousel__arrow--right) {
     right: 15px !important;
   }
