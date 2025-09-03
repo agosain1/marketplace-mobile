@@ -129,6 +129,7 @@
 
 <script>
 import { api } from 'src/boot/axios'
+import { useAuthStore } from '../stores/auth'
 import GoogleSignIn from '../components/GoogleSignIn.vue'
 
 export default {
@@ -207,16 +208,17 @@ export default {
     },
 
     async login() {
-      console.log('Login attempt:', { email: this.form.email, api_url: API_URL })
+      console.log('Login attempt:', { email: this.form.email })
       try {
         const response = await api.post(`auth/login`, {
           email: this.form.email,
           password: this.form.password
         })
 
-        if (response.data.token) {
-          localStorage.setItem('auth_token', response.data.token)
-          localStorage.setItem('user', JSON.stringify(response.data.user))
+        if (response.data.success) {
+          // Cookie is set automatically by backend, just update store
+          const authStore = useAuthStore()
+          authStore.setAuth(response.data.user)
           console.log('Successfully signed in!')
           this.$router.push('/')
         }
@@ -270,9 +272,10 @@ export default {
           profile: googleData.profile
         })
 
-        if (response.data.token) {
-          localStorage.setItem('auth_token', response.data.token)
-          localStorage.setItem('user', JSON.stringify(response.data.user))
+        if (response.data.success) {
+          // Cookie is set automatically by backend, just update store
+          const authStore = useAuthStore()
+          authStore.setAuth(response.data.user)
           console.log('Successfully signed in with Google!')
           this.$router.push('/')
         }

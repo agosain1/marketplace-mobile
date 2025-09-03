@@ -66,6 +66,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { api } from 'src/boot/axios'
+import { useAuthStore } from '../stores/auth'
 
 const props = defineProps({
   modelValue: {
@@ -128,18 +129,14 @@ const sendMessage = async () => {
   sending.value = true
 
   try {
-    const token = localStorage.getItem('auth_token')
-    if (!token) {
+    const authStore = useAuthStore()
+    if (!authStore.isLoggedIn) {
       return
     }
 
     await api.post('/messages/send', {
       receiver_email: props.seller.email,
       content: messageContent.value.trim()
-    }, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
     })
 
     messageSent.value = true

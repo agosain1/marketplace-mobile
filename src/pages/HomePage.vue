@@ -132,6 +132,7 @@
 <script>
 import { api } from 'src/boot/axios'
 import { formatDate } from '../utils/dateUtils.js'
+import { useAuthStore } from '../stores/auth'
 import MessageSellerDialog from 'src/components/MessageSellerDialog.vue'
 
 
@@ -154,7 +155,8 @@ export default {
   },
   computed: {
     isLoggedIn() {
-      return !!localStorage.getItem('auth_token')
+      const authStore = useAuthStore()
+      return authStore.isLoggedIn
     }
   },
   methods: {
@@ -213,12 +215,7 @@ export default {
       }
 
       try {
-        const token = localStorage.getItem('auth_token')
-        const res = await api.get(`messages/unread-count`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const res = await api.get(`messages/unread-count`)
         this.unreadCount = res.data.unread_count || 0
       } catch (e) {
         console.error("Error fetching unread count:", e)
@@ -253,9 +250,8 @@ export default {
       }
 
       try {
-        const token = localStorage.getItem('auth_token')
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        this.currentUserEmail = payload.email
+        const authStore = useAuthStore()
+        this.currentUserEmail = authStore.user?.email || null
       } catch (e) {
         console.error("Error getting current user:", e)
         this.currentUserEmail = null
