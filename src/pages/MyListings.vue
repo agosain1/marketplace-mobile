@@ -121,7 +121,7 @@
                 </div>
                 <div class="text-h6">{{ listing.title }}</div>
                 <div class="text-subtitle2">{{ "$" + listing.price + " " + listing.currency }}</div>
-                <div class="text-subtitle2">{{ "Location: " + listing.location }}</div>
+                <div class="text-subtitle2">{{ listing.location }}</div>
               </q-card-section>
               <q-card-actions align="right">
                 <q-btn
