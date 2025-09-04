@@ -3,7 +3,6 @@ from fastapi import APIRouter, HTTPException, status, Depends, Header, Response,
 import bcrypt
 import jwt
 import datetime
-from typing import Optional
 from dotenv import load_dotenv
 import os
 import random
@@ -15,7 +14,7 @@ from google.oauth2 import id_token
 load_dotenv()
 
 from api.database import get_db
-from api.models import Users, VerificationCodes, Listings
+from api.models import Users, VerificationCodes, Listings, Messages
 from api.services.email_service import get_email_service
 from sqlalchemy.orm import Session
 
@@ -102,21 +101,6 @@ def verify_jwt_token(request: Request):
             status_code = status.HTTP_401_UNAUTHORIZED,
             detail = "Invalid token"
         )
-
-
-def verify_jwt_token_and_email(request: Request, db: Session = Depends(get_db)):
-    """Verify JWT token and check if email is verified"""
-    token_data = verify_jwt_token(request)
-
-    user = db.query(Users).filter(Users.id == token_data['uuid']).first()
-    
-    if not user or not user.email_verified:
-        raise HTTPException(
-            status_code = status.HTTP_403_FORBIDDEN,
-            detail = "Email verification required"
-        )
-
-    return token_data
 
 
 def generate_verification_code() -> str:
@@ -228,7 +212,6 @@ def login(login: Login, response: Response, db: Session = Depends(get_db)):
 def register(register: Register, db: Session = Depends(get_db)):
     # Check if user already exists
     existing_user = db.query(Users).filter(Users.email == register.email).first()
-
     if existing_user:
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
@@ -370,7 +353,7 @@ def delete_account(token_data: dict = Depends(verify_jwt_token), db: Session = D
 
     # Find the user
     user = db.query(Users).filter(Users.id == user_id).first()
-    
+
     if not user:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
@@ -391,6 +374,10 @@ def delete_account(token_data: dict = Depends(verify_jwt_token), db: Session = D
 
     # Delete all user's listings from database (cascade will handle this)
     db.query(Listings).filter(Listings.seller_id == user_id).delete()
+
+    # Delete all messages where user is sender OR receiver
+    db.query(Messages).filter(Messages.sender_id == user_id).delete()
+    db.query(Messages).filter(Messages.receiver_id == user_id).delete()
     
     # Delete the user account
     db.delete(user)
@@ -467,7 +454,7 @@ def validate_token(token_data: dict = Depends(verify_jwt_token), db: Session = D
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     return {
         "success": True,
         "user": {

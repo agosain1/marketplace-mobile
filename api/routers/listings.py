@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form
 from api.database import get_db
 from api.models import Users, Listings
 from sqlalchemy.orm import Session
-from .auth import verify_jwt_token_and_email
+from .auth import verify_jwt_token
 from fastapi import HTTPException, status
 from api.services.s3_service import get_s3_service
 from api.services.location_service import get_location_from_coords, search_location, search_location_suggestions
@@ -35,7 +35,7 @@ async def create_listing(
     longitude: float = Form(...),
     condition: str = Form(...),
     images: Optional[List[UploadFile]] = File(None),
-    token_data: dict = Depends(verify_jwt_token_and_email),
+    token_data: dict = Depends(verify_jwt_token),
     db: Session = Depends(get_db)
 ):
     seller_id = token_data['uuid']
@@ -125,10 +125,19 @@ async def create_listing(
         )
 
 @router.get("")
-def get_listings(db: Session = Depends(get_db)):
+def get_listings(user_id: Optional[str] = None, db: Session = Depends(get_db)):
     # Query listings with seller information using SQLAlchemy relationships
-    listings = db.query(Listings).join(Users, Listings.seller_id == Users.id).order_by(Listings.created_at.desc()).all()
-    
+    query = (
+        db.query(Listings)
+        .join(Users, Listings.seller_id == Users.id)
+        .order_by(Listings.created_at.desc())
+    )
+
+    if user_id:
+        query = query.filter(Listings.seller_id != user_id)
+
+    listings = query.all()
+
     # Format response with seller information
     result = []
     for listing in listings:
@@ -158,7 +167,7 @@ def get_listings(db: Session = Depends(get_db)):
     return result
 
 @router.get("/my_listings")
-def get_my_listings(token_data: dict = Depends(verify_jwt_token_and_email), db: Session = Depends(get_db)):
+def get_my_listings(token_data: dict = Depends(verify_jwt_token), db: Session = Depends(get_db)):
     user_id = uuid.UUID(token_data['uuid'])
     
     # Query user's listings
@@ -228,7 +237,7 @@ def get_listing(listing_id: str, db: Session = Depends(get_db)):
     return result
 
 @router.delete("/{listing_id}")
-def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token_and_email), db: Session = Depends(get_db)):
+def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token), db: Session = Depends(get_db)):
     user_id = uuid.UUID(token_data['uuid'])
     
     # Find the listing

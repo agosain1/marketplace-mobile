@@ -50,42 +50,6 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.isLoading = false
       }
-    },
-
-    // Login action
-    async login(email, password) {
-      this.isLoading = true
-      try {
-        const result = await authService.login(email, password)
-
-        if (result.success) {
-          this.setAuth(result.data.user)
-          return { success: true, data: result.data }
-        } else {
-          return { success: false, error: result.error }
-        }
-      } catch (error) {
-        return { success: false, error: 'Login failed. Please try again.' + error }
-      } finally {
-        this.isLoading = false
-      }
-    },
-
-    // Logout action
-    async logout() {
-      try {
-        await authService.logout()
-      } catch (error) {
-        console.error('Logout request failed:', error)
-      } finally {
-        // Clear auth state regardless of API call result
-        this.clearAuth()
-      }
-    },
-
-    // Update user data
-    updateUser(userData) {
-      this.user = { ...this.user, ...userData }
     }
   }
 })

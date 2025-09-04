@@ -157,8 +157,7 @@
 
 <script>
 import { api } from 'src/boot/axios'
-import { useAuthStore } from '../stores/auth'
-import { formatDate } from '../utils/dateUtils.js'
+import { useAuthStore } from 'stores/authStore.js'
 
 
 export default {
@@ -278,8 +277,7 @@ export default {
     },
     goToListing(listingId) {
       this.$router.push(`/listing/${listingId}`)
-    },
-    formatDate
+    }
   },
   mounted() {
     // Only fetch listings if user is logged in

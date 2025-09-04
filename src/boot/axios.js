@@ -1,5 +1,6 @@
 import { defineBoot } from '#q-app/wrappers'
 import axios from 'axios'
+import { useAuthStore } from 'src/stores/authStore.js'
 
 // Be careful when using SSR for cross-request state pollution
 // due to creating a Singleton instance here;
@@ -14,6 +15,20 @@ const baseURL = apiUrl.endsWith('/') ? apiUrl : `${apiUrl}/`
 const api = axios.create({
   baseURL: baseURL
 })
+
+// Add response interceptor to handle 401 errors globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear auth store on 401 Unauthorized
+      const authStore = useAuthStore()
+      authStore.clearAuth()
+      console.log('401 detected - cleared auth store')
+    }
+    return Promise.reject(error)
+  }
+)
 
 export default defineBoot(({ app }) => {
   // for use inside Vue files (Options API) through this.$axios and this.$api
