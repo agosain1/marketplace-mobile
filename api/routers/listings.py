@@ -1,7 +1,9 @@
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, UploadFile, File, Form
-from api.database import get_db_cursor
-from .auth import verify_jwt_token_and_email
+from api.database import get_db
+from api.models import Users, Listings
+from sqlalchemy.orm import Session
+from .auth import verify_jwt_token
 from fastapi import HTTPException, status
 from api.services.s3_service import get_s3_service
 from api.services.location_service import get_location_from_coords, search_location, search_location_suggestions
@@ -13,10 +15,6 @@ router = APIRouter(
     tags=["listings"]
 )
 
-INSERT_COMMAND = """
-        INSERT INTO listings (title, description, price, currency, category, latitude, longitude, condition, status, views, seller_id, images, location)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-    """
 
 class Listing(BaseModel):
     title: str
@@ -26,7 +24,6 @@ class Listing(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     condition: str
-    seller_id: str
 
 @router.post("")
 async def create_listing(
@@ -38,7 +35,8 @@ async def create_listing(
     longitude: float = Form(...),
     condition: str = Form(...),
     images: Optional[List[UploadFile]] = File(None),
-    token_data: dict = Depends(verify_jwt_token_and_email)
+    token_data: dict = Depends(verify_jwt_token),
+    db: Session = Depends(get_db)
 ):
     seller_id = token_data['uuid']
     listing_id = str(uuid.uuid4())
@@ -78,18 +76,31 @@ async def create_listing(
         
 
         location = get_location_from_coords(latitude, longitude)
-        # Insert listing into database
-        new_listing = (
-            title, description, price, 'USD', category, latitude, longitude,
-            condition, 'active', 0, seller_id, image_urls, location
+        
+        # Create listing using SQLAlchemy
+        new_listing = Listings(
+            title=title,
+            description=description,
+            price=price,
+            currency='USD',
+            category=category,
+            latitude=latitude,
+            longitude=longitude,
+            condition=condition,
+            status='active',
+            views=0,
+            seller_id=uuid.UUID(seller_id),
+            images=image_urls,
+            location=location
         )
         
-        with get_db_cursor() as cur:
-            cur.execute(INSERT_COMMAND, new_listing)
+        db.add(new_listing)
+        db.commit()
+        db.refresh(new_listing)
         
         response_data = {
             "message": "Listing created successfully",
-            "listing_id": listing_id
+            "listing_id": str(new_listing.id)
         }
         
         # Add images to response if they were uploaded
@@ -114,104 +125,159 @@ async def create_listing(
         )
 
 @router.get("")
-def get_listings():
-    with get_db_cursor() as cur:
-        cur.execute(
-            """
-            SELECT 
-                l.*,
-                CONCAT(u.fname, ' ', u.lname) as seller_name,
-                u.email as seller_email
-            FROM listings l
-            JOIN users u ON l.seller_id = u.id
-            ORDER BY l.created_at DESC
-            """
-        )
-        response = cur.fetchall()
-    return response
+def get_listings(user_id: Optional[str] = None, db: Session = Depends(get_db)):
+    # Query listings with seller information using SQLAlchemy relationships
+    query = (
+        db.query(Listings)
+        .join(Users, Listings.seller_id == Users.id)
+        .order_by(Listings.created_at.desc())
+    )
+
+    if user_id:
+        query = query.filter(Listings.seller_id != user_id)
+
+    listings = query.all()
+
+    # Format response with seller information
+    result = []
+    for listing in listings:
+        seller = db.query(Users).filter(Users.id == listing.seller_id).first()
+        listing_dict = {
+            "id": str(listing.id),
+            "title": listing.title,
+            "description": listing.description,
+            "price": float(listing.price),
+            "currency": listing.currency,
+            "category": listing.category,
+            "latitude": float(listing.latitude) if listing.latitude else None,
+            "longitude": float(listing.longitude) if listing.longitude else None,
+            "condition": listing.condition,
+            "status": listing.status,
+            "views": listing.views,
+            "seller_id": str(listing.seller_id),
+            "images": listing.images,
+            "location": listing.location,
+            "created_at": listing.created_at.isoformat() if listing.created_at else None,
+            "updated_at": listing.updated_at.isoformat() if listing.updated_at else None,
+            "seller_name": f"{seller.fname} {seller.lname}" if seller else None,
+            "seller_email": seller.email if seller else None
+        }
+        result.append(listing_dict)
+    
+    return result
 
 @router.get("/my_listings")
-def get_my_listings(token_data: dict = Depends(verify_jwt_token_and_email)):
-    user_id = token_data['uuid']
-    with get_db_cursor() as cur:
-        cur.execute("SELECT * FROM listings WHERE seller_id = %s", (user_id, ))
-        response = cur.fetchall()
-    return response
+def get_my_listings(token_data: dict = Depends(verify_jwt_token), db: Session = Depends(get_db)):
+    user_id = uuid.UUID(token_data['uuid'])
+    
+    # Query user's listings
+    listings = db.query(Listings).filter(Listings.seller_id == user_id).all()
+    
+    # Convert to dict format for response
+    result = []
+    for listing in listings:
+        listing_dict = {
+            "id": str(listing.id),
+            "title": listing.title,
+            "description": listing.description,
+            "price": float(listing.price),
+            "currency": listing.currency,
+            "category": listing.category,
+            "latitude": float(listing.latitude) if listing.latitude else None,
+            "longitude": float(listing.longitude) if listing.longitude else None,
+            "condition": listing.condition,
+            "status": listing.status,
+            "views": listing.views,
+            "seller_id": str(listing.seller_id),
+            "images": listing.images,
+            "location": listing.location,
+            "created_at": listing.created_at.isoformat() if listing.created_at else None,
+            "updated_at": listing.updated_at.isoformat() if listing.updated_at else None
+        }
+        result.append(listing_dict)
+    
+    return result
 
 @router.get("/{listing_id}")
-def get_listing(listing_id: str):
-    with get_db_cursor() as cur:
-        cur.execute(
-            """
-            SELECT 
-                l.*,
-                CONCAT(u.fname, ' ', u.lname) as seller_name,
-                u.email as seller_email
-            FROM listings l
-            JOIN users u ON l.seller_id = u.id
-            WHERE l.id = %s
-            """,
-            (listing_id,)
+def get_listing(listing_id: str, db: Session = Depends(get_db)):
+    # Find the listing
+    listing = db.query(Listings).filter(Listings.id == uuid.UUID(listing_id)).first()
+    
+    if not listing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Listing not found"
         )
-        listing = cur.fetchone()
-        
-        if not listing:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Listing not found"
-            )
-        
-    return listing
+    
+    # Get seller information
+    seller = db.query(Users).filter(Users.id == listing.seller_id).first()
+    
+    # Format response
+    result = {
+        "id": str(listing.id),
+        "title": listing.title,
+        "description": listing.description,
+        "price": float(listing.price),
+        "currency": listing.currency,
+        "category": listing.category,
+        "latitude": float(listing.latitude) if listing.latitude else None,
+        "longitude": float(listing.longitude) if listing.longitude else None,
+        "condition": listing.condition,
+        "status": listing.status,
+        "views": listing.views,
+        "seller_id": str(listing.seller_id),
+        "images": listing.images,
+        "location": listing.location,
+        "created_at": listing.created_at.isoformat() if listing.created_at else None,
+        "updated_at": listing.updated_at.isoformat() if listing.updated_at else None,
+        "seller_name": f"{seller.fname} {seller.lname}" if seller else None,
+        "seller_email": seller.email if seller else None
+    }
+    
+    return result
 
 @router.delete("/{listing_id}")
-def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token_and_email)):
-    user_id = token_data['uuid']
+def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token), db: Session = Depends(get_db)):
+    user_id = uuid.UUID(token_data['uuid'])
     
-    with get_db_cursor() as cur:
-        # First check if the listing exists and belongs to the user
-        cur.execute("SELECT seller_id, images FROM listings WHERE id = %s", (listing_id,))
-        listing = cur.fetchone()
-        
-        if not listing:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Listing not found"
-            )
-        
-        # Check if the user owns this listing (convert both to strings for comparison)
-        if str(listing['seller_id']) != str(user_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only delete your own listings"
-            )
-        
-        # Get image URLs before deleting
-        image_urls = listing.get('images', [])
-        
-        # Delete the listing
-        cur.execute("DELETE FROM listings WHERE id = %s", (listing_id,))
-        
-        if cur.rowcount == 0:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Listing not found"
-            )
-        
-        # Delete images from S3
-        if image_urls and isinstance(image_urls, list):
-            # Filter out placeholder images
-            s3_images = [url for url in image_urls]
-            if s3_images:
-                get_s3_service().delete_listing_images(s3_images)
+    # Find the listing
+    listing = db.query(Listings).filter(Listings.id == uuid.UUID(listing_id)).first()
+    
+    if not listing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Listing not found"
+        )
+    
+    # Check if the user owns this listing
+    if listing.seller_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own listings"
+        )
+    
+    # Get image URLs before deleting
+    image_urls = listing.images or []
+    
+    # Delete the listing
+    db.delete(listing)
+    db.commit()
+    
+    # Delete images from S3
+    if image_urls and isinstance(image_urls, list):
+        # Filter out placeholder images
+        s3_images = [url for url in image_urls]
+        if s3_images:
+            get_s3_service().delete_listing_images(s3_images)
     
     return {"message": "Listing deleted successfully"}
 
 @router.get("/search-location/{query}")
-def search_location_endpoint(query: str):
+def search_location_endpoint(query: str, db: Session = Depends(get_db)):
     """
     Search for a location and return coordinates
     """
-    result = search_location(query)
+    result = search_location(query, db)
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -220,9 +286,9 @@ def search_location_endpoint(query: str):
     return result
 
 @router.get("/location-suggestions/{query}")
-def get_location_suggestions(query: str, limit: int = 5):
+def get_location_suggestions(query: str, limit: int = 5, db: Session = Depends(get_db)):
     """
     Get autocomplete suggestions for location search
     """
-    suggestions = search_location_suggestions(query, limit)
+    suggestions = search_location_suggestions(query, limit, db)
     return {"suggestions": suggestions}
