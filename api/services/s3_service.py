@@ -1,7 +1,6 @@
 import os
 import boto3
 from botocore.exceptions import ClientError
-from typing import List
 import uuid
 from datetime import datetime
 
