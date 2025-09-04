@@ -149,8 +149,8 @@
 </template>
 
 <script>
-import axios from "axios"
-import { API_URL } from '../../constants.js'
+import { api } from 'src/boot/axios'
+import { useAuthStore } from 'stores/authStore.js'
 import { formatDate } from '../utils/dateUtils.js'
 import MessageSellerDialog from 'src/components/MessageSellerDialog.vue'
 import ListingLocationMap from 'src/components/ListingLocationMap.vue'
@@ -175,7 +175,8 @@ export default {
   },
   computed: {
     isLoggedIn() {
-      return !!localStorage.getItem('auth_token')
+      const authStore = useAuthStore()
+      return authStore.isLoggedIn
     },
     listingId() {
       return this.$route.params.id
@@ -187,7 +188,7 @@ export default {
         this.loading = true
         this.error = null
 
-        const res = await axios.get(`${API_URL}listings/${this.listingId}`)
+        const res = await api.get(`listings/${this.listingId}`)
         this.listing = res.data
       } catch (e) {
         console.error("Error fetching listing:", e)
@@ -235,9 +236,8 @@ export default {
       }
 
       try {
-        const token = localStorage.getItem('auth_token')
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        this.currentUserEmail = payload.email
+        const authStore = useAuthStore()
+        this.currentUserEmail = authStore.user?.email || null
       } catch (e) {
         console.error("Error getting current user:", e)
         this.currentUserEmail = null

@@ -71,6 +71,7 @@ onMounted(() => {
     })
   })
 
+
   // If we have initial coordinates, set them
   if (props.latitude && props.longitude) {
     map.setCenter([props.longitude, props.latitude])

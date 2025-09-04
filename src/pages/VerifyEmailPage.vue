@@ -76,8 +76,8 @@
 </template>
 
 <script>
-import axios from "axios"
-import { API_URL } from '../../constants.js'
+import { api } from 'src/boot/axios'
+import { useAuthStore } from 'stores/authStore.js'
 
 export default {
   name: "VerifyEmailPage",
@@ -94,16 +94,13 @@ export default {
   },
 
   mounted() {
-    // Get email from route params or localStorage
-    this.email = this.$route.params.email || localStorage.getItem('pendingVerificationEmail')
+    // Get email from route params
+    this.email = this.$route.params.email
 
     if (!this.email) {
       this.$router.push('/login')
       return
     }
-
-    // Store email in localStorage in case user refreshes
-    localStorage.setItem('pendingVerificationEmail', this.email)
   },
 
   beforeUnmount() {
@@ -123,19 +120,15 @@ export default {
       this.errorMessage = ''
 
       try {
-        const response = await axios.post(`${API_URL}auth/verify-email`, {
+        const response = await api.post(`auth/verify-email`, {
           email: this.email,
           code: this.verificationCode
         })
 
-        if (response.data.token) {
-          // Store token and user data
-          localStorage.setItem('auth_token', response.data.token)
-          localStorage.setItem('user', JSON.stringify(response.data.user))
-
-          // Clear pending verification email
-          localStorage.removeItem('pendingVerificationEmail')
-
+        if (response.data.success) {
+          // Cookie is set automatically by backend, just update store
+          const authStore = useAuthStore()
+          authStore.setAuth(response.data.user)
           this.$router.push('/')
         }
       } catch (error) {
@@ -151,7 +144,7 @@ export default {
       this.errorMessage = ''
 
       try {
-        await axios.post(`${API_URL}auth/resend-verification`, {
+        await api.post(`auth/resend-verification`, {
           email: this.email
         })
 

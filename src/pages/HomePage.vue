@@ -130,9 +130,8 @@
 </template>
 
 <script>
-import axios from "axios"
-import { API_URL } from '../../constants.js'
-import { formatDate } from '../utils/dateUtils.js'
+import { api } from 'src/boot/axios'
+import { useAuthStore } from 'stores/authStore.js'
 import MessageSellerDialog from 'src/components/MessageSellerDialog.vue'
 
 
@@ -155,24 +154,23 @@ export default {
   },
   computed: {
     isLoggedIn() {
-      return !!localStorage.getItem('auth_token')
+      const authStore = useAuthStore()
+      return authStore.isLoggedIn
     }
   },
   methods: {
     async getListings() {
       try {
-        const res = await axios.get(`${API_URL}listings`)
+        const authStore = useAuthStore()
+        const res = await api.get(`listings`, {
+          params: {
+            user_id: authStore.user ? authStore.user.id : null
+          }
+        })
         console.log("API response:", res.data) // Debug log
 
         // Ensure listings is always an array
-        let allListings = Array.isArray(res.data) ? res.data : []
-
-        // Filter out current user's listings if logged in
-        if (this.isLoggedIn && this.currentUserEmail) {
-          this.listings = allListings.filter(listing => listing.seller_email !== this.currentUserEmail)
-        } else {
-          this.listings = allListings
-        }
+        this.listings = Array.isArray(res.data) ? res.data : []
 
         // Initialize image slides for each listing
         const slides = {}
@@ -214,12 +212,7 @@ export default {
       }
 
       try {
-        const token = localStorage.getItem('auth_token')
-        const res = await axios.get(`${API_URL}messages/unread-count`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const res = await api.get(`messages/unread-count`)
         this.unreadCount = res.data.unread_count || 0
       } catch (e) {
         console.error("Error fetching unread count:", e)
@@ -254,15 +247,13 @@ export default {
       }
 
       try {
-        const token = localStorage.getItem('auth_token')
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        this.currentUserEmail = payload.email
+        const authStore = useAuthStore()
+        this.currentUserEmail = authStore.user?.email || null
       } catch (e) {
         console.error("Error getting current user:", e)
         this.currentUserEmail = null
       }
-    },
-    formatDate
+    }
   },
   async mounted() {
     await this.getCurrentUser()    // get current user info first

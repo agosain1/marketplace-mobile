@@ -108,8 +108,8 @@
         </div>
 
         <!-- Google Sign-In -->
-        <GoogleSignIn 
-          @success="handleGoogleSignInSuccess" 
+        <GoogleSignIn
+          @success="handleGoogleSignInSuccess"
           @error="handleGoogleSignInError"
         />
 
@@ -128,8 +128,8 @@
 </template>
 
 <script>
-import axios from "axios"
-import { API_URL } from '../../constants.js'
+import { api } from 'src/boot/axios'
+import { useAuthStore } from 'stores/authStore.js'
 import GoogleSignIn from '../components/GoogleSignIn.vue'
 
 export default {
@@ -155,14 +155,20 @@ export default {
   },
   computed: {
     passwordValidationRules() {
-      return [
-        val => !!val || 'Password is required',
-        val => val.length >= 8 || 'Password must be at least 8 characters',
-        val => /[A-Z]/.test(val) || 'Password must contain at least one uppercase letter',
-        val => /[a-z]/.test(val) || 'Password must contain at least one lowercase letter',
-        val => /[0-9]/.test(val) || 'Password must contain at least one number',
-        val => this.hasSpecialCharacter(val) || 'Password must contain at least one special character'
-      ]
+      const basicRules = [val => !!val || 'Password is required']
+      
+      // Only add complexity rules during registration
+      if (!this.isLogin) {
+        basicRules.push(
+          val => val.length >= 8 || 'Password must be at least 8 characters',
+          val => /[A-Z]/.test(val) || 'Password must contain at least one uppercase letter',
+          val => /[a-z]/.test(val) || 'Password must contain at least one lowercase letter',
+          val => /[0-9]/.test(val) || 'Password must contain at least one number',
+          val => this.hasSpecialCharacter(val) || 'Password must contain at least one special character'
+        )
+      }
+      
+      return basicRules
     }
   },
   methods: {
@@ -173,14 +179,15 @@ export default {
     },
     toggleMode() {
       this.isLogin = !this.isLogin
-      this.resetForm()
+      this.resetForm(true) // preserve email when toggling
     },
 
-    resetForm() {
+    resetForm(preserveEmail = false) {
+      const currentEmail = preserveEmail ? this.form.email : ''
       this.form = {
         firstName: '',
         lastName: '',
-        email: '',
+        email: currentEmail,
         password: '',
         confirmPassword: ''
       }
@@ -208,16 +215,17 @@ export default {
     },
 
     async login() {
-      console.log('Login attempt:', { email: this.form.email, api_url: API_URL })
+      console.log('Login attempt:', { email: this.form.email })
       try {
-        const response = await axios.post(`${API_URL}auth/login`, {
+        const response = await api.post(`auth/login`, {
           email: this.form.email,
           password: this.form.password
         })
 
-        if (response.data.token) {
-          localStorage.setItem('auth_token', response.data.token)
-          localStorage.setItem('user', JSON.stringify(response.data.user))
+        if (response.data.success) {
+          // Cookie is set automatically by backend, just update store
+          const authStore = useAuthStore()
+          authStore.setAuth(response.data.user)
           console.log('Successfully signed in!')
           this.$router.push('/')
         }
@@ -240,7 +248,7 @@ export default {
     },
 
     async register() {
-      const response = await axios.post(`${API_URL}auth/register`, {
+      const response = await api.post(`auth/register`, {
         fname: this.form.firstName,
         lname: this.form.lastName,
         email: this.form.email,
@@ -264,16 +272,17 @@ export default {
 
       try {
         console.log('Google Sign-In successful:', googleData)
-        
+
         // Send the Google ID token to our backend
-        const response = await axios.post(`${API_URL}auth/google`, {
+        const response = await api.post(`auth/google`, {
           idToken: googleData.idToken,
           profile: googleData.profile
         })
 
-        if (response.data.token) {
-          localStorage.setItem('auth_token', response.data.token)
-          localStorage.setItem('user', JSON.stringify(response.data.user))
+        if (response.data.success) {
+          // Cookie is set automatically by backend, just update store
+          const authStore = useAuthStore()
+          authStore.setAuth(response.data.user)
           console.log('Successfully signed in with Google!')
           this.$router.push('/')
         }
