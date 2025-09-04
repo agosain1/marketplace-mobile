@@ -49,6 +49,7 @@ class Users(Base):
     is_admin: Mapped[Optional[bool]] = mapped_column(Boolean, server_default=text('false'))
     email_verified: Mapped[Optional[bool]] = mapped_column(Boolean, server_default=text('false'))
     google_id: Mapped[Optional[str]] = mapped_column(String(255))
+    pfp_url: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text()))
 
     listings: Mapped[list['Listings']] = relationship('Listings', back_populates='seller')
     messages: Mapped[list['Messages']] = relationship('Messages', foreign_keys='[Messages.receiver_id]', back_populates='receiver')
