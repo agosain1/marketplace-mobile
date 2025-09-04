@@ -6,7 +6,18 @@ api.defaults.withCredentials = true
 export const authService = {
   // Validate current token via cookie
   async validateToken() {
-    return await api.get('/auth/validate-token')
+    try {
+      const response = await api.get('/auth/validate-token')
+      return {
+        success: true,
+        data: response.data
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data || error.message
+      }
+    }
   }
 }
 
