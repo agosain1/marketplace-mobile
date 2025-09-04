@@ -1,6 +1,7 @@
 import { defineBoot } from '#q-app/wrappers'
 import { googleAuthConfig } from '../config/google.js'
 
+
 export default defineBoot(async ({ app }) => {
   try {
     // Load Google Identity Services script

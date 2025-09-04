@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import auth, listings, messages
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 app = FastAPI(
     title="Marketplace API",
@@ -8,9 +12,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
+origin = os.getenv("FRONTEND_URL")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        origin
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

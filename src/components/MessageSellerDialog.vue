@@ -7,17 +7,16 @@
 
       <q-card-section>
         <div class="q-mb-md">
-          <div class="text-subtitle2 text-weight-medium">To: {{ seller.name || seller.email }}</div>
-          <div class="text-caption text-grey-6">{{ seller.email }}</div>
+          <div class="text-subtitle2 text-weight-medium">To: {{ seller.name || "User" }}</div>
         </div>
-        
+
         <div class="q-mb-md">
           <div class="text-subtitle2 text-weight-medium">About: {{ listing.title }}</div>
           <div class="text-caption text-grey-6">${{ listing.price }} {{ listing.currency }}</div>
         </div>
 
         <!-- Success Message -->
-        <q-banner 
+        <q-banner
           v-if="messageSent"
           class="bg-positive text-white q-mb-md"
           rounded
@@ -66,6 +65,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { api } from 'src/boot/axios'
+import { useAuthStore } from 'stores/authStore.js'
 
 const props = defineProps({
   modelValue: {
@@ -128,18 +128,14 @@ const sendMessage = async () => {
   sending.value = true
 
   try {
-    const token = localStorage.getItem('auth_token')
-    if (!token) {
+    const authStore = useAuthStore()
+    if (!authStore.isLoggedIn) {
       return
     }
 
     await api.post('/messages/send', {
       receiver_email: props.seller.email,
       content: messageContent.value.trim()
-    }, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
     })
 
     messageSent.value = true

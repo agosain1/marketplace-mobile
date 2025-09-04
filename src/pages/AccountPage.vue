@@ -15,7 +15,7 @@
         <div v-if="user && profile" class="q-gutter-md">
           <!-- Profile Section -->
           <div class="text-h6 q-mb-md">Profile Information</div>
-          
+
           <div v-if="errorMessage" class="q-mb-md">
             <q-banner :class="errorMessage.includes('successfully') ? 'bg-positive text-white' : 'bg-negative text-white'">
               {{ errorMessage }}
@@ -43,20 +43,20 @@
                 />
               </div>
             </div>
-            
+
             <div class="row q-gutter-sm">
-              <q-btn 
-                type="submit" 
-                color="positive" 
+              <q-btn
+                type="submit"
+                color="positive"
                 icon="save"
                 :loading="loading"
                 :disable="!editForm.firstName || !editForm.lastName"
               >
                 Save Changes
               </q-btn>
-              <q-btn 
-                color="grey" 
-                outline 
+              <q-btn
+                color="grey"
+                outline
                 icon="cancel"
                 @click="cancelEdit"
                 :disable="loading"
@@ -69,12 +69,12 @@
           <div v-else>
             <div class="q-mb-sm">
               <strong>Name:</strong> {{ profile.firstName }} {{ profile.lastName }}
-              <q-btn 
-                flat 
-                dense 
-                round 
-                icon="edit" 
-                size="sm" 
+              <q-btn
+                flat
+                dense
+                round
+                icon="edit"
+                size="sm"
                 class="q-ml-sm"
                 @click="startEdit"
                 color="primary"
@@ -82,11 +82,11 @@
             </div>
             <div class="q-mb-sm">
               <strong>Email:</strong> {{ profile.email }}
-              <q-chip 
-                v-if="profile.isGoogleUser" 
-                size="sm" 
-                color="blue" 
-                text-color="white" 
+              <q-chip
+                v-if="profile.isGoogleUser"
+                size="sm"
+                color="blue"
+                text-color="white"
                 icon="account_circle"
                 class="q-ml-sm"
               >
@@ -121,18 +121,27 @@
           />
         </div>
 
-        <div v-else-if="user && !profile" class="text-center">
-          <q-spinner-dots size="50px" color="primary" />
-          <p class="q-mt-md">Loading profile...</p>
+        <div v-else-if="!user" class="flex flex-center">
+          <q-card style="width: 100%; max-width: 400px;">
+            <q-card-section class="text-center">
+              <q-icon name="login" size="64px" color="primary" class="q-mb-md" />
+              <h5 class="q-mt-none q-mb-sm">Login Required</h5>
+              <p class="text-grey-7 q-mb-lg">
+                You must be logged in to view your account.
+              </p>
+              <q-btn
+                label="Go to Login"
+                color="primary"
+                @click="goToLogin"
+                class="full-width"
+              />
+            </q-card-section>
+          </q-card>
         </div>
 
         <div v-else class="text-center">
-          <p>Please log in to view your account.</p>
-          <q-btn
-            label="Go to Login"
-            color="primary"
-            @click="goToLogin"
-          />
+          <q-spinner-dots size="50px" color="primary" />
+          <p class="q-mt-md">Loading profile...</p>
         </div>
           </q-card-section>
         </q-card>
@@ -142,8 +151,8 @@
 </template>
 
 <script>
-import axios from "axios"
-import { API_URL } from '../../constants.js'
+import { api } from 'src/boot/axios'
+import { useAuthStore } from 'stores/authStore.js'
 
 export default {
   name: "AccountPage",
@@ -168,38 +177,20 @@ export default {
   },
   methods: {
     loadUser() {
-      const userStr = localStorage.getItem('user')
-      if (userStr) {
-        try {
-          this.user = JSON.parse(userStr)
-        } catch (e) {
-          console.error('Error parsing user data:', e)
-          this.user = null
-        }
-      }
+      const authStore = useAuthStore()
+      this.user = authStore.user
     },
 
     async loadProfile() {
       if (!this.user) return
-      
+
       try {
-        const token = localStorage.getItem('auth_token')
-        if (!token) {
-          this.goToLogin()
-          return
-        }
-
-        const response = await axios.get(`${API_URL}auth/profile`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-
+        const response = await api.get(`auth/profile`)
         this.profile = response.data
       } catch (error) {
         console.error('Error loading profile:', error)
         if (error.response?.status === 401) {
-          this.goToLogin()
+          console.log('User not authenticated - clearing user data')
         } else {
           this.errorMessage = 'Failed to load profile information'
         }
@@ -225,28 +216,18 @@ export default {
       this.errorMessage = ''
 
       try {
-        const token = localStorage.getItem('auth_token')
-        if (!token) {
-          this.goToLogin()
-          return
-        }
-
-        await axios.put(`${API_URL}auth/profile`, {
+        await api.put(`auth/profile`, {
           firstName: this.editForm.firstName,
           lastName: this.editForm.lastName
-        }, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
         })
 
         // Update profile data
         this.profile.firstName = this.editForm.firstName
         this.profile.lastName = this.editForm.lastName
-        
+
         this.editMode = false
         this.errorMessage = 'Profile updated successfully!'
-        
+
         // Clear success message after 3 seconds
         setTimeout(() => {
           this.errorMessage = ''
@@ -260,9 +241,10 @@ export default {
       }
     },
 
-    logout() {
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('user')
+    async logout() {
+      await api.post(`auth/logout`)
+      const authStore = useAuthStore()
+      authStore.clearAuth()
       this.$router.push('/')
     },
 
@@ -282,22 +264,11 @@ export default {
 
     async deleteAccount() {
       try {
-        const token = localStorage.getItem('auth_token')
-        if (!token) {
-          alert('Please log in again to delete your account')
-          this.$router.push('/login')
-          return
-        }
-
-        await axios.delete(`${API_URL}auth/delete-account`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        await api.delete(`auth/delete-account`)
 
         alert('Your account has been successfully deleted.')
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('user')
+        const authStore = useAuthStore()
+        authStore.clearAuth()
         this.$router.push('/')
 
       } catch (e) {

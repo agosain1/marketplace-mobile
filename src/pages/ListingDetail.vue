@@ -28,161 +28,112 @@
         </div>
 
         <div v-else-if="listing" class="q-pa-lg">
-          <q-card class="q-mb-lg">
-            <!-- Images Section -->
-            <div v-if="listing.images && listing.images.length > 0" class="q-mb-md">
-              <!-- Image Carousel for multiple images -->
-              <q-carousel
-                v-if="listing.images.length > 1"
-                v-model="currentSlide"
-                swipeable
-                animated
-                arrows
-                navigation
-                height="300px"
-                class="bg-grey-1 shadow-2 rounded-borders"
-              >
-                <q-carousel-slide
-                  v-for="(image, imgIndex) in listing.images"
-                  :key="imgIndex"
-                  :name="imgIndex"
-                  class="column no-wrap flex-center"
-                >
+          <div class="row q-col-gutter-lg">
+            <!-- Left side - Images -->
+            <div class="col-xs-12 col-sm-8 col-md-8 col-lg-8">
+              <q-card class="full-height">
+                <!-- Images Section -->
+                <div v-if="listing.images && listing.images.length > 0" class="full-height">
+                  <!-- Image Carousel for multiple images -->
+                  <q-carousel
+                    v-if="listing.images.length > 1"
+                    v-model="currentSlide"
+                    :swipeable="$q.screen.xs"
+                    animated
+                    arrows
+                    navigation
+                    height="600px"
+                    class="bg-grey-1 shadow-2 rounded-borders carousel-with-arrows full-height"
+                  >
+                    <q-carousel-slide
+                      v-for="(image, imgIndex) in listing.images"
+                      :key="imgIndex"
+                      :name="imgIndex"
+                      class="column no-wrap flex-center"
+                    >
+                      <q-img
+                        :src="image"
+                        :alt="`${listing.title} - Image ${imgIndex + 1}`"
+                        fit="contain"
+                        style="max-height: 600px; width: 100%;"
+                        class="rounded-borders"
+                      />
+                    </q-carousel-slide>
+                  </q-carousel>
+
+                  <!-- Single Image -->
                   <q-img
-                    :src="image"
-                    :alt="`${listing.title} - Image ${imgIndex + 1}`"
-                    fit="cover"
-                    style="height: 300px; width: 100%;"
+                    v-else
+                    :src="listing.images[0]"
+                    :alt="listing.title"
+                    fit="contain"
+                    style="height: 600px; width: 100%;"
                     class="rounded-borders"
                   />
-                </q-carousel-slide>
-              </q-carousel>
 
-              <!-- Single Image -->
-              <q-img
-                v-else
-                :src="listing.images[0]"
-                :alt="listing.title"
-                fit="cover"
-                style="height: 300px; width: 100%;"
-                class="rounded-borders"
-              />
-
-              <!-- Image Counter -->
-              <div v-if="listing.images.length > 1" class="absolute-top-right q-ma-sm">
-                <q-chip
-                  dense
-                  color="black"
-                  text-color="white"
-                  icon="photo"
-                  :label="`${currentSlide + 1}/${listing.images.length}`"
-                />
-              </div>
+                  <!-- Image Counter -->
+                  <div v-if="listing.images.length > 1" class="absolute-top-right q-ma-sm">
+                    <q-chip
+                      dense
+                      color="black"
+                      text-color="white"
+                      icon="photo"
+                      :label="`${currentSlide + 1}/${listing.images.length}`"
+                    />
+                  </div>
+                </div>
+              </q-card>
             </div>
 
-            <!-- Title and Price -->
-            <q-card-section>
-              <div class="text-h4 q-mb-sm">{{ listing.title }}</div>
-              <div class="text-h5 text-green-7 q-mb-md">${{ listing.price }} {{ listing.currency }}</div>
-            </q-card-section>
+            <!-- Right side - All Information -->
+            <div class="col-xs-12 col-sm-4 col-md-4 col-lg-4">
+              <q-card class="q-mb-lg">
+                <!-- Title and Price -->
+                <q-card-section>
+                  <div class="">
+                    <div class="col">
+                      <div class="text-h5 q-mb-sm text-blue-7">{{ listing.title }}</div>
+                      <div class="text-h6 text-green-7 q-mb-sm">${{ listing.price }} {{ listing.currency }}</div>
+                      <div class="text-body1 text-indigo-7 q-mb-xs">Seller: {{ listing.seller_name || 'Unknown' }}</div>
+                      <div class="text-body2 text-grey-7 q-mb-xs">Category: {{ listing.category }}</div>
+                      <div class="text-body2 text-grey-7 q-mb-sm">Condition: {{ listing.condition }}</div>
+                      <div class="text-blue-7 text-h6 q-mb-xs">Description</div>
+                      <div class="text-wrap text-black text-body1 q-mb-md">{{ listing.description }}</div>
+                    </div>
+                    <div class="col-auto">
+                      <q-btn
+                        v-if="isLoggedIn && listing.seller_email !== currentUserEmail"
+                        color="primary"
+                        icon="message"
+                        label="Message Seller"
+                        @click="messageSeller"
+                        size="md"
+                      />
+                    </div>
+                  </div>
+                </q-card-section>
 
-            <!-- Details -->
-            <q-card-section>
-              <q-list dense>
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="description" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Description</q-item-label>
-                    <q-item-label caption class="text-wrap">{{ listing.description }}</q-item-label>
-                  </q-item-section>
-                </q-item>
+                <!-- Location Map Section -->
+                <q-card-section v-if="listing.latitude && listing.longitude">
+                  <h6 class="q-ma-none q-mb-md text-grey-8">Approximate Location: {{ listing.location }}</h6>
+                  <ListingLocationMap
+                    :latitude="listing.latitude"
+                    :longitude="listing.longitude"
+                    :location="listing.location"
+                    :zoom="11"
+                  />
+                </q-card-section>
 
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="category" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Category</q-item-label>
-                    <q-item-label caption>{{ listing.category }}</q-item-label>
-                  </q-item-section>
-                </q-item>
+                <!-- Additional Info Section -->
+                <q-card-section>
+                  <div class="text-body2 text-grey-7 q-mb-xs">Views: {{ listing.views }}</div>
+                  <div class="text-body2 text-grey-7 q-mb-xs">Created: {{ formatDate(listing.created_at) }}</div>
+                  <div class="text-body2 text-grey-7">Last Updated: {{ formatDate(listing.updated_at) }}</div>
+                </q-card-section>
 
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="place" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Location</q-item-label>
-                    <q-item-label caption>{{ listing.location }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="star" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Condition</q-item-label>
-                    <q-item-label caption>{{ listing.condition }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="visibility" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Views</q-item-label>
-                    <q-item-label caption>{{ listing.views }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="person" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Seller</q-item-label>
-                    <q-item-label caption>{{ listing.seller_name || 'Unknown' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="schedule" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Created</q-item-label>
-                    <q-item-label caption>{{ formatDate(listing.created_at) }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item>
-                  <q-item-section avatar>
-                    <q-icon name="update" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Last Updated</q-item-label>
-                    <q-item-label caption>{{ formatDate(listing.updated_at) }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-card-section>
-
-            <!-- Actions -->
-            <q-card-actions align="right">
-              <q-btn
-                v-if="isLoggedIn && listing.seller_email !== currentUserEmail"
-                color="primary"
-                icon="message"
-                label="Message Seller"
-                @click="messageSeller"
-                class="q-ma-sm"
-              />
-            </q-card-actions>
-          </q-card>
+              </q-card>
+            </div>
+          </div>
         </div>
       </q-page>
     </q-page-container>
@@ -198,15 +149,17 @@
 </template>
 
 <script>
-import axios from "axios"
-import { API_URL } from '../../constants.js'
+import { api } from 'src/boot/axios'
+import { useAuthStore } from 'stores/authStore.js'
 import { formatDate } from '../utils/dateUtils.js'
 import MessageSellerDialog from 'src/components/MessageSellerDialog.vue'
+import ListingLocationMap from 'src/components/ListingLocationMap.vue'
 
 export default {
   name: "ListingDetail",
   components: {
-    MessageSellerDialog
+    MessageSellerDialog,
+    ListingLocationMap
   },
   data() {
     return {
@@ -222,7 +175,8 @@ export default {
   },
   computed: {
     isLoggedIn() {
-      return !!localStorage.getItem('auth_token')
+      const authStore = useAuthStore()
+      return authStore.isLoggedIn
     },
     listingId() {
       return this.$route.params.id
@@ -234,7 +188,7 @@ export default {
         this.loading = true
         this.error = null
 
-        const res = await axios.get(`${API_URL}listings/${this.listingId}`)
+        const res = await api.get(`listings/${this.listingId}`)
         this.listing = res.data
       } catch (e) {
         console.error("Error fetching listing:", e)
@@ -282,9 +236,8 @@ export default {
       }
 
       try {
-        const token = localStorage.getItem('auth_token')
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        this.currentUserEmail = payload.email
+        const authStore = useAuthStore()
+        this.currentUserEmail = authStore.user?.email || null
       } catch (e) {
         console.error("Error getting current user:", e)
         this.currentUserEmail = null
@@ -305,3 +258,34 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+/* Enhanced carousel arrows for desktop */
+@media (min-width: 576px) {
+  .carousel-with-arrows :deep(.q-carousel__arrow) {
+    background: rgba(0, 0, 0, 0.7) !important;
+    color: white !important;
+    border-radius: 50% !important;
+    width: 50px !important;
+    height: 50px !important;
+    font-size: 24px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+  }
+
+  .carousel-with-arrows :deep(.q-carousel__arrow:hover) {
+    background: rgba(0, 0, 0, 0.9) !important;
+    transform: translateY(-50%) scale(1.1) !important;
+  }
+
+  .carousel-with-arrows :deep(.q-carousel__arrow--left) {
+    left: 15px !important;
+  }
+
+  .carousel-with-arrows :deep(.q-carousel__arrow--right) {
+    right: 15px !important;
+  }
+}
+</style>

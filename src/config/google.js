@@ -1,4 +1,4 @@
-import { GOOGLE_CLIENT_ID } from '../../constants.js'
+ import { GOOGLE_CLIENT_ID } from '../../constants.js'
 
 export const googleAuthConfig = {
   clientId: GOOGLE_CLIENT_ID,
