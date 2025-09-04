@@ -185,7 +185,7 @@ export default {
       if (!this.user) return
 
       try {
-        const response = await api.get(`auth/profile`)
+        const response = await api.get(`account/profile`)
         this.profile = response.data
       } catch (error) {
         console.error('Error loading profile:', error)
@@ -216,7 +216,7 @@ export default {
       this.errorMessage = ''
 
       try {
-        await api.put(`auth/profile`, {
+        await api.put(`account/profile`, {
           firstName: this.editForm.firstName,
           lastName: this.editForm.lastName
         })
@@ -264,7 +264,7 @@ export default {
 
     async deleteAccount() {
       try {
-        await api.delete(`auth/delete-account`)
+        await api.delete(`account/delete-account`)
 
         alert('Your account has been successfully deleted.')
         const authStore = useAuthStore()
