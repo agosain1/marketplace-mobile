@@ -228,7 +228,7 @@
 import { ref, onMounted, watch } from "vue"
 import { useRouter } from "vue-router"
 import { api } from 'src/boot/axios'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from 'stores/authStore.js'
 import { locationService } from '../services/locationService.js'
 import LocationMap from '../components/LocationMap.vue'
 

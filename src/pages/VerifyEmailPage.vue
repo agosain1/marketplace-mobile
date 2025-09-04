@@ -77,7 +77,7 @@
 
 <script>
 import { api } from 'src/boot/axios'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from 'stores/authStore.js'
 
 export default {
   name: "VerifyEmailPage",

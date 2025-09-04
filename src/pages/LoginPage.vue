@@ -129,7 +129,7 @@
 
 <script>
 import { api } from 'src/boot/axios'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from 'stores/authStore.js'
 import GoogleSignIn from '../components/GoogleSignIn.vue'
 
 export default {
@@ -155,14 +155,20 @@ export default {
   },
   computed: {
     passwordValidationRules() {
-      return [
-        val => !!val || 'Password is required',
-        val => val.length >= 8 || 'Password must be at least 8 characters',
-        val => /[A-Z]/.test(val) || 'Password must contain at least one uppercase letter',
-        val => /[a-z]/.test(val) || 'Password must contain at least one lowercase letter',
-        val => /[0-9]/.test(val) || 'Password must contain at least one number',
-        val => this.hasSpecialCharacter(val) || 'Password must contain at least one special character'
-      ]
+      const basicRules = [val => !!val || 'Password is required']
+      
+      // Only add complexity rules during registration
+      if (!this.isLogin) {
+        basicRules.push(
+          val => val.length >= 8 || 'Password must be at least 8 characters',
+          val => /[A-Z]/.test(val) || 'Password must contain at least one uppercase letter',
+          val => /[a-z]/.test(val) || 'Password must contain at least one lowercase letter',
+          val => /[0-9]/.test(val) || 'Password must contain at least one number',
+          val => this.hasSpecialCharacter(val) || 'Password must contain at least one special character'
+        )
+      }
+      
+      return basicRules
     }
   },
   methods: {
@@ -173,14 +179,15 @@ export default {
     },
     toggleMode() {
       this.isLogin = !this.isLogin
-      this.resetForm()
+      this.resetForm(true) // preserve email when toggling
     },
 
-    resetForm() {
+    resetForm(preserveEmail = false) {
+      const currentEmail = preserveEmail ? this.form.email : ''
       this.form = {
         firstName: '',
         lastName: '',
-        email: '',
+        email: currentEmail,
         password: '',
         confirmPassword: ''
       }

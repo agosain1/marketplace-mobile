@@ -121,18 +121,27 @@
           />
         </div>
 
-        <div v-else-if="user && !profile" class="text-center">
-          <q-spinner-dots size="50px" color="primary" />
-          <p class="q-mt-md">Loading profile...</p>
+        <div v-else-if="!user" class="flex flex-center">
+          <q-card style="width: 100%; max-width: 400px;">
+            <q-card-section class="text-center">
+              <q-icon name="login" size="64px" color="primary" class="q-mb-md" />
+              <h5 class="q-mt-none q-mb-sm">Login Required</h5>
+              <p class="text-grey-7 q-mb-lg">
+                You must be logged in to view your account.
+              </p>
+              <q-btn
+                label="Go to Login"
+                color="primary"
+                @click="goToLogin"
+                class="full-width"
+              />
+            </q-card-section>
+          </q-card>
         </div>
 
         <div v-else class="text-center">
-          <p>Please log in to view your account.</p>
-          <q-btn
-            label="Go to Login"
-            color="primary"
-            @click="goToLogin"
-          />
+          <q-spinner-dots size="50px" color="primary" />
+          <p class="q-mt-md">Loading profile...</p>
         </div>
           </q-card-section>
         </q-card>
@@ -143,7 +152,7 @@
 
 <script>
 import { api } from 'src/boot/axios'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from 'stores/authStore.js'
 
 export default {
   name: "AccountPage",
@@ -181,7 +190,7 @@ export default {
       } catch (error) {
         console.error('Error loading profile:', error)
         if (error.response?.status === 401) {
-          this.goToLogin()
+          console.log('User not authenticated - clearing user data')
         } else {
           this.errorMessage = 'Failed to load profile information'
         }
@@ -233,8 +242,9 @@ export default {
     },
 
     async logout() {
+      await api.post(`auth/logout`)
       const authStore = useAuthStore()
-      await authStore.logout()
+      authStore.clearAuth()
       this.$router.push('/')
     },
 

@@ -1,7 +1,6 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-import { Notify } from 'quasar'
+import { useAuthStore } from 'stores/authStore.js'
 
 export function useAuth() {
   const router = useRouter()
@@ -10,45 +9,6 @@ export function useAuth() {
   // Validate token with backend
   const validateToken = async () => {
     return await authStore.validateToken()
-  }
-
-  // Login function
-  const login = async (email, password) => {
-    const result = await authStore.login(email, password)
-    
-    if (result.success) {
-      Notify.create({
-        type: 'positive',
-        message: 'Login successful!',
-        position: 'top'
-      })
-    } else {
-      Notify.create({
-        type: 'negative',
-        message: result.error,
-        position: 'top'
-      })
-    }
-    
-    return result
-  }
-
-  // Logout function
-  const logout = async (showMessage = true) => {
-    await authStore.logout()
-    
-    if (showMessage) {
-      Notify.create({
-        type: 'info',
-        message: 'You have been logged out',
-        position: 'top'
-      })
-    }
-    
-    // Redirect to login page if not already there
-    if (router.currentRoute.value.path !== '/login' && router.currentRoute.value.path !== '/') {
-      router.push('/login')
-    }
   }
 
   // Require authentication (for protected routes)
@@ -67,13 +27,13 @@ export function useAuth() {
   const startTokenValidation = () => {
     // Initial validation
     validateToken()
-    
+
     // Periodic validation
     setInterval(async () => {
       if (authStore.isAuthenticated) {
         await validateToken()
       }
-    }, 5 * 60 * 1000) // 5 minutes
+    }, 5 * 60 * 1000) // 5 minutes = 5 * 60 * 1000
   }
 
   return {
@@ -81,11 +41,9 @@ export function useAuth() {
     isAuthenticated: computed(() => authStore.isLoggedIn),
     user: computed(() => authStore.currentUser),
     isLoading: computed(() => authStore.isLoading),
-    
+
     // Methods
     validateToken,
-    login,
-    logout,
     requireAuth,
     startTokenValidation
   }

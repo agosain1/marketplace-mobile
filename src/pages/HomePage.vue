@@ -131,8 +131,7 @@
 
 <script>
 import { api } from 'src/boot/axios'
-import { formatDate } from '../utils/dateUtils.js'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from 'stores/authStore.js'
 import MessageSellerDialog from 'src/components/MessageSellerDialog.vue'
 
 
@@ -162,18 +161,16 @@ export default {
   methods: {
     async getListings() {
       try {
-        const res = await api.get(`listings`)
+        const authStore = useAuthStore()
+        const res = await api.get(`listings`, {
+          params: {
+            user_id: authStore.user ? authStore.user.id : null
+          }
+        })
         console.log("API response:", res.data) // Debug log
 
         // Ensure listings is always an array
-        let allListings = Array.isArray(res.data) ? res.data : []
-
-        // Filter out current user's listings if logged in
-        if (this.isLoggedIn && this.currentUserEmail) {
-          this.listings = allListings.filter(listing => listing.seller_email !== this.currentUserEmail)
-        } else {
-          this.listings = allListings
-        }
+        this.listings = Array.isArray(res.data) ? res.data : []
 
         // Initialize image slides for each listing
         const slides = {}
@@ -256,8 +253,7 @@ export default {
         console.error("Error getting current user:", e)
         this.currentUserEmail = null
       }
-    },
-    formatDate
+    }
   },
   async mounted() {
     await this.getCurrentUser()    // get current user info first

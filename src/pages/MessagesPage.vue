@@ -193,7 +193,7 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from 'src/boot/axios'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from 'stores/authStore.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
