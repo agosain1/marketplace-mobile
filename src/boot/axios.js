@@ -21,10 +21,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear auth store on 401 Unauthorized
-      const authStore = useAuthStore()
-      authStore.clearAuth()
-      console.log('401 detected - cleared auth store')
+      // Don't clear auth for validate-token endpoint - let the store handle it
+      if (!error.config?.url?.includes('auth/validate-token')) {
+        // Clear auth store on 401 Unauthorized
+        const authStore = useAuthStore()
+        authStore.clearAuth()
+        console.log('401 detected - cleared auth store')
+      }
     }
     return Promise.reject(error)
   }
