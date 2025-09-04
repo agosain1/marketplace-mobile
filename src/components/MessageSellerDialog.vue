@@ -7,7 +7,7 @@
 
       <q-card-section>
         <div class="q-mb-md">
-          <div class="text-subtitle2 text-weight-medium">To: {{ seller.name }}</div>
+          <div class="text-subtitle2 text-weight-medium">To: {{ seller.name || "User" }}</div>
         </div>
 
         <div class="q-mb-md">
