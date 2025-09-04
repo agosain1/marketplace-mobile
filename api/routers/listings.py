@@ -39,11 +39,11 @@ async def create_listing(
     db: Session = Depends(get_db)
 ):
     seller_id = token_data['uuid']
-    listing_id = str(uuid.uuid4())
+    s3_id = str(uuid.uuid4())
     image_urls = []
     
     try:
-        # Handle image uploads if provided
+        # Handle image uploads
         if images and len(images) > 0 and images[0].filename:
             # Validate image files
             allowed_extensions = {'jpg', 'jpeg', 'png', 'webp'}
@@ -71,7 +71,7 @@ async def create_listing(
                 file_content = await image.read()
                 
                 # Upload to S3
-                image_url = get_s3_service().upload_listing_image(file_content, file_extension, listing_id)
+                image_url = get_s3_service().upload_listing_image(file_content, file_extension, s3_id)
                 image_urls.append(image_url)
         
 
@@ -113,9 +113,9 @@ async def create_listing(
         # Clean up any uploaded images if database insert fails
         if 'image_urls' in locals() and images and len(images) > 0:
             # Only clean up actual uploaded images, not placeholders
-            uploaded_images = [url for url in image_urls]
-            if uploaded_images:
-                get_s3_service().delete_listing_images(uploaded_images)
+            if image_urls:
+                for image in image_urls:
+                    get_s3_service().delete_image(image)
         
         if isinstance(e, HTTPException):
             raise e
@@ -265,10 +265,8 @@ def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token)
     
     # Delete images from S3
     if image_urls and isinstance(image_urls, list):
-        # Filter out placeholder images
-        s3_images = [url for url in image_urls]
-        if s3_images:
-            get_s3_service().delete_listing_images(s3_images)
+        for url in image_urls:
+            get_s3_service().delete_image(url)
     
     return {"message": "Listing deleted successfully"}
 

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers import auth, listings, messages
+from api.routers import auth, listings, messages, account
 from dotenv import load_dotenv
 import os
 
@@ -37,3 +37,4 @@ async def root():
 app.include_router(listings.router)
 app.include_router(auth.router)
 app.include_router(messages.router)
+app.include_router(account.router)
