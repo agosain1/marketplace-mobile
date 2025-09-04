@@ -373,7 +373,6 @@ async function addListing() {
   try {
     message.value = "Creating listing..."
 
-    // Use FormData for both with and without images
     const formData = new FormData()
     formData.append('title', title.value)
     formData.append('description', description.value)
@@ -385,7 +384,7 @@ async function addListing() {
     formData.append('latitude', latitude.value.toString())
     formData.append('longitude', longitude.value.toString())
 
-    // Add image files if provided
+    // Add image files
     if (images.value && (Array.isArray(images.value) ? images.value.length > 0 : true)) {
       const files = Array.isArray(images.value) ? images.value : [images.value]
       files.forEach(file => {

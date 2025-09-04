@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from api.models import Users, Listings, Messages
 from .auth import verify_jwt_token
 from sqlalchemy.orm import Session
@@ -89,7 +89,8 @@ def get_profile(token_data: dict = Depends(verify_jwt_token), db: Session = Depe
         "firstName": user.fname,
         "lastName": user.lname,
         "email": user.email,
-        "isGoogleUser": bool(user.google_id)
+        "isGoogleUser": bool(user.google_id),
+        "pfp_url": user.pfp_url
     }
 
 
@@ -119,3 +120,59 @@ def update_profile(profile_data: UpdateProfile, token_data: dict = Depends(verif
             "email": user.email
         }
     }
+
+@router.put('/upload_pfp')
+async def upload_pfp(
+    image: UploadFile = File(...),
+    token_data: dict = Depends(verify_jwt_token),
+    db: Session = Depends(get_db)
+):
+    """Upload and update user profile picture"""
+    user_id = token_data['uuid']
+
+    # Find the user
+    user = db.query(Users).filter(Users.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    try:
+        from api.services.s3_service import get_s3_service
+        s3_service = get_s3_service()
+        
+        # Delete old profile picture if it exists
+        if user.pfp_url and isinstance(user.pfp_url, list) and len(user.pfp_url) > 0:
+            old_image_url = user.pfp_url[0]
+            try:
+                s3_service.delete_image(old_image_url)
+                print(f"Deleted old profile picture: {old_image_url}")
+            except Exception as e:
+                print(f"Warning: Failed to delete old profile picture: {str(e)}")
+        
+        # Upload new profile picture
+        file_content = await image.read()
+        file_extension = image.filename.split('.')[-1].lower()
+        image_url = s3_service.upload_profile_picture(file_content, file_extension, user_id)
+        
+        # Update user's profile picture URL in database
+        user.pfp_url = [image_url]  # Store as array to match the model
+        db.commit()
+        
+        return {
+            "message": "Profile picture updated successfully",
+            "pfp_url": image_url
+        }
+        
+    except ImportError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="S3 service not available"
+        )
+    except Exception as e:
+        print(f"Error uploading profile picture: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to upload profile picture"
+        )

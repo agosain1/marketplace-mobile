@@ -16,6 +16,33 @@
           <!-- Profile Section -->
           <div class="text-h6 q-mb-md">Profile Information</div>
 
+          <q-img
+                      :src="profile.pfp_url"
+                      :alt="`could not load pfp`"
+                      fit="cover"
+                      style="height: 30px; width: 10%;"
+                      class="rounded-borders"
+                    />
+
+          <!-- Image Upload Button -->
+          <q-btn
+            label="Upload Profile Picture"
+            color="primary"
+            icon="upload"
+            @click="triggerFileUpload"
+            :loading="uploadingImage"
+            class="q-mb-md"
+          />
+          <input
+            ref="fileInput"
+            type="file"
+            accept="image/*"
+            style="display: none"
+            @change="handleImageUpload"
+          />
+
+
+
           <div v-if="errorMessage" class="q-mb-md">
             <q-banner :class="errorMessage.includes('successfully') ? 'bg-positive text-white' : 'bg-negative text-white'">
               {{ errorMessage }}
@@ -163,6 +190,7 @@ export default {
       editMode: false,
       loading: false,
       errorMessage: '',
+      uploadingImage: false,
       editForm: {
         firstName: '',
         lastName: ''
@@ -187,6 +215,10 @@ export default {
       try {
         const response = await api.get(`account/profile`)
         this.profile = response.data
+        console.log(this.profile)
+        if (this.profile.pfp_url.length === 0) {
+          this.profile.pfp_url = 'https://toppng.com/uploads/preview/instagram-default-profile-picture-11562973083brycehrmyv.png' // DEFAULT URL
+        }
       } catch (error) {
         console.error('Error loading profile:', error)
         if (error.response?.status === 401) {
@@ -254,6 +286,48 @@ export default {
 
     goBack() {
       this.$router.back()
+    },
+
+    triggerFileUpload() {
+      this.$refs.fileInput.click()
+    },
+
+    async handleImageUpload(event) {
+      const file = event.target.files[0]
+      if (!file) return
+
+      this.uploadingImage = true
+      this.errorMessage = ''
+
+      try {
+        const formData = new FormData()
+        formData.append('image', file)
+
+        const response = await api.put('account/upload_pfp', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+
+        // Update profile with new image URL
+        if (response.data.pfp_url) {
+          this.profile.pfp_url = response.data.pfp_url
+          this.errorMessage = 'Profile picture updated successfully!'
+
+          // Clear success message after 3 seconds
+          setTimeout(() => {
+            this.errorMessage = ''
+          }, 3000)
+        }
+
+      } catch (error) {
+        console.error('Error uploading image:', error)
+        this.errorMessage = error.response?.data?.detail || 'Failed to upload image'
+      } finally {
+        this.uploadingImage = false
+        // Clear the file input
+        event.target.value = ''
+      }
     },
 
     confirmDeleteAccount() {
