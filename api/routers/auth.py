@@ -276,29 +276,7 @@ def verify_email(verify: VerifyEmail, response: Response, db: Session = Depends(
     db.commit()
 
     # Create JWT token and set HTTP-only cookie
-    token = create_jwt_token(user.id, verify.email)
-    
-    # Set HTTP-only cookie with secure flags (secure=False for development)
-    is_production = os.getenv("NODE_ENV") == "production"
-    response.set_cookie(
-        key="auth_token",
-        value=token,
-        max_age=7 * 24 * 60 * 60,  # 7 days in seconds
-        httponly=True,
-        secure=is_production,  # Only secure in production (HTTPS)
-        samesite="lax"
-    )
-
-    return {
-        "success": True,
-        "message": "Email verified successfully",
-        "user": {
-            "id": str(user.id),
-            "email": verify.email,
-            "firstName": user.fname,
-            "lastName": user.lname
-        }
-    }
+    return _create_and_set_cookie(response, user)
 
 
 @router.post('/resend-verification')
@@ -414,29 +392,8 @@ def google_signin(google_auth: GoogleAuth, response: Response, db: Session = Dep
                 existing_user.email_verified = True
                 db.commit()
 
-            # Create JWT token and set HTTP-only cookie for existing user
-            token = create_jwt_token(existing_user.id, existing_user.email)
-            
-            # Set HTTP-only cookie with secure flags (secure=False for development)
-            is_production = os.getenv("NODE_ENV") == "production"
-            response.set_cookie(
-                key="auth_token",
-                value=token,
-                max_age=7 * 24 * 60 * 60,  # 7 days in seconds
-                httponly=True,
-                secure=is_production,  # Only secure in production (HTTPS)
-                samesite="lax"
-            )
-            
-            return {
-                "success": True,
-                "user": {
-                    "id": str(existing_user.id),
-                    "email": existing_user.email,
-                    "firstName": existing_user.fname,
-                    "lastName": existing_user.lname
-                }
-            }
+            return _create_and_set_cookie(response, existing_user)
+
         else:
             # Create new user account
             new_user = Users(
@@ -452,29 +409,7 @@ def google_signin(google_auth: GoogleAuth, response: Response, db: Session = Dep
             db.commit()
             db.refresh(new_user)
 
-            # Create JWT token and set HTTP-only cookie for new user
-            token = create_jwt_token(new_user.id, new_user.email)
-            
-            # Set HTTP-only cookie with secure flags (secure=False for development)
-            is_production = os.getenv("NODE_ENV") == "production"
-            response.set_cookie(
-                key="auth_token",
-                value=token,
-                max_age=7 * 24 * 60 * 60,  # 7 days in seconds
-                httponly=True,
-                secure=is_production,  # Only secure in production (HTTPS)
-                samesite="lax"
-            )
-            
-            return {
-                "success": True,
-                "user": {
-                    "id": str(new_user.id),
-                    "email": new_user.email,
-                    "firstName": new_user.fname,
-                    "lastName": new_user.lname
-                }
-            }
+            return _create_and_set_cookie(response, new_user)
 
     except HTTPException:
         # Re-raise HTTP exceptions
@@ -485,3 +420,28 @@ def google_signin(google_auth: GoogleAuth, response: Response, db: Session = Dep
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail = f"Google authentication failed: {str(e)}"
         )
+
+def _create_and_set_cookie(response: Response, user: Users):
+    # If user is verified, create JWT token and set HTTP-only cookie
+    token = create_jwt_token(user.id, user.email)
+
+    # Set HTTP-only cookie with secure flags (secure=False for development)
+    is_production = os.getenv("NODE_ENV") == "production"
+    response.set_cookie(
+        key = "auth_token",
+        value = token,
+        max_age = 7 * 24 * 60 * 60,  # 7 days in seconds
+        httponly = True,
+        secure = is_production,  # Only secure in production (HTTPS)
+        samesite = "lax"
+    )
+
+    return {
+        "success": True,
+        "user": {
+            "id": str(user.id),
+            "email": user.email,
+            "firstName": user.fname,
+            "lastName": user.lname
+        }
+    }

@@ -216,7 +216,7 @@ export default {
         const response = await api.get(`account/profile`)
         this.profile = response.data
         console.log(this.profile)
-        if (this.profile.pfp_url.length === 0) {
+        if (!this.profile.pfp_url || this.profile.pfp_url.length === 0) {
           this.profile.pfp_url = 'https://toppng.com/uploads/preview/instagram-default-profile-picture-11562973083brycehrmyv.png' // DEFAULT URL
         }
       } catch (error) {
