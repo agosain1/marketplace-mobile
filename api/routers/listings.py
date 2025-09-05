@@ -112,7 +112,6 @@ async def create_listing(
     except Exception as e:
         # Clean up any uploaded images if database insert fails
         if 'image_urls' in locals() and images and len(images) > 0:
-            # Only clean up actual uploaded images, not placeholders
             if image_urls:
                 for image in image_urls:
                     get_s3_service().delete_image(image)
@@ -142,28 +141,8 @@ def get_listings(user_id: Optional[str] = None, db: Session = Depends(get_db)):
     result = []
     for listing in listings:
         seller = db.query(Users).filter(Users.id == listing.seller_id).first()
-        listing_dict = {
-            "id": str(listing.id),
-            "title": listing.title,
-            "description": listing.description,
-            "price": float(listing.price),
-            "currency": listing.currency,
-            "category": listing.category,
-            "latitude": float(listing.latitude) if listing.latitude else None,
-            "longitude": float(listing.longitude) if listing.longitude else None,
-            "condition": listing.condition,
-            "status": listing.status,
-            "views": listing.views,
-            "seller_id": str(listing.seller_id),
-            "images": listing.images,
-            "location": listing.location,
-            "created_at": listing.created_at.isoformat() if listing.created_at else None,
-            "updated_at": listing.updated_at.isoformat() if listing.updated_at else None,
-            "seller_name": f"{seller.fname} {seller.lname}" if seller else None,
-            "seller_email": seller.email if seller else None
-        }
-        result.append(listing_dict)
-    
+        result.append(format_listing(listing, seller))
+
     return result
 
 @router.get("/my_listings")
@@ -172,30 +151,15 @@ def get_my_listings(token_data: dict = Depends(verify_jwt_token), db: Session = 
     
     # Query user's listings
     listings = db.query(Listings).filter(Listings.seller_id == user_id).all()
+
+    # Get seller information (self)
+    seller = db.query(Users).filter(Users.id == user_id).first()
     
     # Convert to dict format for response
     result = []
     for listing in listings:
-        listing_dict = {
-            "id": str(listing.id),
-            "title": listing.title,
-            "description": listing.description,
-            "price": float(listing.price),
-            "currency": listing.currency,
-            "category": listing.category,
-            "latitude": float(listing.latitude) if listing.latitude else None,
-            "longitude": float(listing.longitude) if listing.longitude else None,
-            "condition": listing.condition,
-            "status": listing.status,
-            "views": listing.views,
-            "seller_id": str(listing.seller_id),
-            "images": listing.images,
-            "location": listing.location,
-            "created_at": listing.created_at.isoformat() if listing.created_at else None,
-            "updated_at": listing.updated_at.isoformat() if listing.updated_at else None
-        }
-        result.append(listing_dict)
-    
+        result.append(format_listing(listing, seller))
+
     return result
 
 @router.get("/{listing_id}")
@@ -213,26 +177,7 @@ def get_listing(listing_id: str, db: Session = Depends(get_db)):
     seller = db.query(Users).filter(Users.id == listing.seller_id).first()
     
     # Format response
-    result = {
-        "id": str(listing.id),
-        "title": listing.title,
-        "description": listing.description,
-        "price": float(listing.price),
-        "currency": listing.currency,
-        "category": listing.category,
-        "latitude": float(listing.latitude) if listing.latitude else None,
-        "longitude": float(listing.longitude) if listing.longitude else None,
-        "condition": listing.condition,
-        "status": listing.status,
-        "views": listing.views,
-        "seller_id": str(listing.seller_id),
-        "images": listing.images,
-        "location": listing.location,
-        "created_at": listing.created_at.isoformat() if listing.created_at else None,
-        "updated_at": listing.updated_at.isoformat() if listing.updated_at else None,
-        "seller_name": f"{seller.fname} {seller.lname}" if seller else None,
-        "seller_email": seller.email if seller else None
-    }
+    result = format_listing(listing, seller)
     
     return result
 
@@ -290,3 +235,25 @@ def get_location_suggestions(query: str, limit: int = 5, db: Session = Depends(g
     """
     suggestions = search_location_suggestions(query, limit, db)
     return {"suggestions": suggestions}
+
+def format_listing(listing: Listing, seller: str):
+    return {
+        "id": str(listing.id),
+        "title": listing.title,
+        "description": listing.description,
+        "price": float(listing.price),
+        "currency": listing.currency,
+        "category": listing.category,
+        "latitude": float(listing.latitude) if listing.latitude else None,
+        "longitude": float(listing.longitude) if listing.longitude else None,
+        "condition": listing.condition,
+        "status": listing.status,
+        "views": listing.views,
+        "seller_id": str(listing.seller_id),
+        "images": listing.images,
+        "location": listing.location,
+        "created_at": listing.created_at.isoformat() if listing.created_at else None,
+        "updated_at": listing.updated_at.isoformat() if listing.updated_at else None,
+        "seller_name": f"{seller.fname} {seller.lname}" if seller else None,
+        "seller_email": seller.email if seller else None
+    }

@@ -186,6 +186,7 @@ export default {
         }
 
         const res = await api.get(`listings/my_listings`)
+        console.log("API response:", res.data) // Debug log
         this.listings = res.data
 
         // Initialize image slides for each listing
