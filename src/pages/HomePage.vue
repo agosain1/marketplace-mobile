@@ -164,7 +164,10 @@ export default {
         const authStore = useAuthStore()
         const res = await api.get(`listings`, {
           params: {
-            user_id: authStore.user ? authStore.user.id : null
+            user_id: authStore.user ? authStore.user.id : null,
+            lat: 37, // TEMP PLACEHOLDERS
+            lon: -121,
+            dist: 100
           }
         })
         console.log("API response:", res.data) // Debug log
