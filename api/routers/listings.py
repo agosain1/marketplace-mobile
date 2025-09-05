@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from api.database import get_db
 from api.models import Users, Listings
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, Query
 from sqlalchemy import or_
 from .auth import verify_jwt_token
 from fastapi import HTTPException, status
@@ -141,19 +141,8 @@ def get_listings(user_id: Optional[str] = None,
     if user_id:
         query = query.filter(Listings.seller_id != user_id)
 
-    bounding_box = get_bounding_box_corners(lat, lon, dist)
-
-    if bounding_box:
-        ne, nw, se, sw = bounding_box['northeast'], bounding_box['northwest'], bounding_box['southeast'], bounding_box['southwest']
-        lat_min = min(sw[0], se[0])
-        lat_max = max(nw[0], ne[0])
-        lng_min = min(nw[1], sw[1])
-        lng_max = max(ne[1], se[1])
-
-        query = query.filter(
-            Listings.latitude.between(lat_min, lat_max),
-            Listings.longitude.between(lng_min, lng_max)
-        )
+    if lat and lon and dist:
+        query = filter_by_location(query, lat, lon, dist)
 
     listings = query.all()
 
@@ -161,13 +150,16 @@ def get_listings(user_id: Optional[str] = None,
     result = []
     for listing in listings:
         seller = db.query(Users).filter(Users.id == listing.seller_id).first()
-        result.append(format_listing(listing, seller))
+        result.append(format_listing(listing, seller, dist))
 
     return result
 
 
 @router.get("/search")
-def search_listing(q: str, user_id: Optional[str] = None, db: Session = Depends(get_db)):
+def search_listing(q: str, user_id: Optional[str] = None, db: Session = Depends(get_db),
+                    lat: Optional[float] = None,
+                 lon: Optional[float] = None,
+                 dist: Optional[float] = None):
     query = (
         db.query(Listings)
         .join(Users, Listings.seller_id == Users.id)
@@ -176,6 +168,9 @@ def search_listing(q: str, user_id: Optional[str] = None, db: Session = Depends(
 
     if user_id:
         query = query.filter(Listings.seller_id != user_id)
+
+    if lat and lon and dist:
+        query = filter_by_location(query, lat, lon, dist)
 
     if q:
         query = query.filter(
@@ -285,24 +280,29 @@ def get_location_suggestions(query: str, limit: int = 5, db: Session = Depends(g
     suggestions = search_location_suggestions(query, limit, db)
     return {"suggestions": suggestions}
 
-def format_listing(listing: Listing, seller: str):
+def format_listing(listing: Listing, seller: Users, dist_away: float = None):
     return {
-        "id": str(listing.id),
-        "title": listing.title,
-        "description": listing.description,
-        "price": float(listing.price),
-        "currency": listing.currency,
-        "category": listing.category,
-        "latitude": float(listing.latitude) if listing.latitude else None,
-        "longitude": float(listing.longitude) if listing.longitude else None,
-        "condition": listing.condition,
-        "status": listing.status,
-        "views": listing.views,
-        "seller_id": str(listing.seller_id),
-        "images": listing.images,
-        "location": listing.location,
-        "created_at": listing.created_at.isoformat() if listing.created_at else None,
-        "updated_at": listing.updated_at.isoformat() if listing.updated_at else None,
-        "seller_name": f"{seller.fname} {seller.lname}" if seller else None,
-        "seller_email": seller.email if seller else None
+        "listing": listing,
+        "seller": seller,
+        "dist_away": dist_away if dist_away else None
     }
+
+def filter_by_location(query: Query[Listing], lat: Optional[float] = None,
+                       lon: Optional[float] = None,
+                       dist: Optional[float] = None):
+    bounding_box = get_bounding_box_corners(lat, lon, dist)
+
+    if bounding_box:
+        ne, nw, se, sw = bounding_box['northeast'], bounding_box['northwest'], bounding_box[
+            'southeast'], bounding_box['southwest']
+        lat_min = min(sw[0], se[0])
+        lat_max = max(nw[0], ne[0])
+        lng_min = min(nw[1], sw[1])
+        lng_max = max(ne[1], se[1])
+
+        query = query.filter(
+            Listings.latitude.between(lat_min, lat_max),
+            Listings.longitude.between(lng_min, lng_max)
+        )
+
+    return query
