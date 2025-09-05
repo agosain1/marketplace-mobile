@@ -187,7 +187,9 @@ export default {
           return
         }
 
-        const res = await api.get(`listings/my_listings`)
+        const authStore = useAuthStore()
+
+        const res = await api.get(`listings/user_listings/${authStore.user.id}`)
         console.log("API response:", res.data) // Debug log
         this.response = res.data
 

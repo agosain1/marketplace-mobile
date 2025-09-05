@@ -189,10 +189,8 @@ def search_listing(q: str, user_id: Optional[str] = None, db: Session = Depends(
 
     return result
 
-@router.get("/my_listings")
-def get_my_listings(token_data: dict = Depends(verify_jwt_token), db: Session = Depends(get_db)):
-    user_id = uuid.UUID(token_data['uuid'])
-    
+@router.get("/user_listings/{user_id}")
+def get_user_listings(user_id: str, db: Session = Depends(get_db)):
     # Query user's listings
     listings = db.query(Listings).filter(Listings.seller_id == user_id).all()
 
