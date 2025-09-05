@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from .auth import verify_jwt_token
 from fastapi import HTTPException, status
 from api.services.s3_service import get_s3_service
-from api.services.location_service import get_location_from_coords, search_location, search_location_suggestions
+from api.services.location_service import get_location_from_coords, search_location, search_location_suggestions, get_bounding_box_corners
 from typing import List, Optional
 import uuid
 
@@ -124,7 +124,12 @@ async def create_listing(
         )
 
 @router.get("")
-def get_listings(user_id: Optional[str] = None, db: Session = Depends(get_db)):
+def get_listings(user_id: Optional[str] = None,
+                 db: Session = Depends(get_db),
+                 lat: Optional[float] = None,
+                 lon: Optional[float] = None,
+                 dist: Optional[float] = None
+                 ):
     # Query listings with seller information using SQLAlchemy relationships
     query = (
         db.query(Listings)
@@ -134,6 +139,20 @@ def get_listings(user_id: Optional[str] = None, db: Session = Depends(get_db)):
 
     if user_id:
         query = query.filter(Listings.seller_id != user_id)
+
+    bounding_box = get_bounding_box_corners(lat, lon, dist)
+
+    if bounding_box:
+        ne, nw, se, sw = bounding_box['northeast'], bounding_box['northwest'], bounding_box['southeast'], bounding_box['southwest']
+        lat_min = min(sw[0], se[0])
+        lat_max = max(nw[0], ne[0])
+        lng_min = min(nw[1], sw[1])
+        lng_max = max(ne[1], se[1])
+
+        query = query.filter(
+            Listings.latitude.between(lat_min, lat_max),
+            Listings.longitude.between(lng_min, lng_max)
+        )
 
     listings = query.all()
 
