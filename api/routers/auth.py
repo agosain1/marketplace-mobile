@@ -301,12 +301,7 @@ def validate_token(token_data: dict = Depends(verify_jwt_token), db: Session = D
 
     return {
         "success": True,
-        "user": {
-            "id": str(user.id),
-            "email": user.email,
-            "firstName": user.fname,
-            "lastName": user.lname
-        }
+        "user": user
     }
 
 
@@ -416,10 +411,5 @@ def _create_and_set_cookie(response: Response, user: Users):
 
     return {
         "success": True,
-        "user": {
-            "id": str(user.id),
-            "email": user.email,
-            "firstName": user.fname,
-            "lastName": user.lname
-        }
+        "user": user
     }
