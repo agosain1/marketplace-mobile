@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form
 from api.database import get_db
 from api.models import Users, Listings
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from .auth import verify_jwt_token
 from fastapi import HTTPException, status
 from api.services.s3_service import get_s3_service
@@ -157,6 +158,35 @@ def get_listings(user_id: Optional[str] = None,
     listings = query.all()
 
     # Format response with seller information
+    result = []
+    for listing in listings:
+        seller = db.query(Users).filter(Users.id == listing.seller_id).first()
+        result.append(format_listing(listing, seller))
+
+    return result
+
+
+@router.get("/search")
+def search_listing(q: str, user_id: Optional[str] = None, db: Session = Depends(get_db)):
+    query = (
+        db.query(Listings)
+        .join(Users, Listings.seller_id == Users.id)
+        .order_by(Listings.created_at.desc())
+    )
+
+    if user_id:
+        query = query.filter(Listings.seller_id != user_id)
+
+    if q:
+        query = query.filter(
+            or_(
+                Listings.title.ilike(f"%{q}%"),
+                Listings.description.ilike(f"%{q}%")
+            )
+        )
+
+    listings = query.all()
+
     result = []
     for listing in listings:
         seller = db.query(Users).filter(Users.id == listing.seller_id).first()

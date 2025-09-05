@@ -49,6 +49,37 @@
       <q-page>
         <div class="q-pa-lg">
           <h4>Current Listings</h4>
+          
+          <!-- Search Box -->
+          <div class="q-mb-lg">
+            <q-input
+              v-model="searchQuery"
+              placeholder="Search listings..."
+              outlined
+              clearable
+              @keyup.enter="searchListings"
+              class="q-mb-sm"
+            >
+              <template v-slot:append>
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="search"
+                  @click="searchListings"
+                  :loading="searchLoading"
+                />
+              </template>
+            </q-input>
+            <q-btn
+              v-if="isSearching"
+              flat
+              label="Show All Listings"
+              @click="clearSearch"
+              color="grey-6"
+              size="sm"
+            />
+          </div>
           <div class="row">
             <div
               v-for="(listing, index) in listings"
@@ -150,6 +181,9 @@ export default {
       showMessageDialog: false,
       selectedSeller: {},
       selectedListing: {},
+      searchQuery: '',
+      searchLoading: false,
+      isSearching: false,
     }
   },
   computed: {
@@ -256,6 +290,47 @@ export default {
         console.error("Error getting current user:", e)
         this.currentUserEmail = null
       }
+    },
+
+    async searchListings() {
+      if (!this.searchQuery.trim()) {
+        return
+      }
+
+      this.searchLoading = true
+      this.isSearching = true
+
+      try {
+        const authStore = useAuthStore()
+        const res = await api.get(`listings/search`, {
+          params: {
+            q: this.searchQuery.trim(),
+            user_id: authStore.user ? authStore.user.id : null
+          }
+        })
+
+        // Ensure listings is always an array
+        this.listings = Array.isArray(res.data) ? res.data : []
+
+        // Initialize image slides for search results
+        const slides = {}
+        this.listings.forEach((listing, index) => {
+          slides[index] = 0 // Start at first image
+        })
+        this.imageSlides = slides
+
+      } catch (e) {
+        console.error("Error searching listings:", e)
+        this.listings = []
+      } finally {
+        this.searchLoading = false
+      }
+    },
+
+    async clearSearch() {
+      this.searchQuery = ''
+      this.isSearching = false
+      await this.getListings() // Load all listings again
     }
   },
   async mounted() {
