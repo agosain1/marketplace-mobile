@@ -111,10 +111,7 @@ def update_profile(profile_data: UpdateProfile, token_data: dict = Depends(verif
 
     return {
         "message": "Profile updated successfully",
-        "user": {
-            "id": str(user.id),
-            "email": user.email
-        }
+        "user": user
     }
 
 @router.put('/upload_pfp')

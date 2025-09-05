@@ -192,8 +192,8 @@ export default {
       errorMessage: '',
       uploadingImage: false,
       editForm: {
-        firstName: '',
-        lastName: ''
+        fname: '',
+        lname: ''
       }
     }
   },
@@ -232,15 +232,15 @@ export default {
 
     startEdit() {
       this.editMode = true
-      this.editForm.firstName = this.profile.firstName
-      this.editForm.lastName = this.profile.lastName
+      this.editForm.fname = this.profile.fname
+      this.editForm.lname = this.profile.lname
       this.errorMessage = ''
     },
 
     cancelEdit() {
       this.editMode = false
-      this.editForm.firstName = ''
-      this.editForm.lastName = ''
+      this.editForm.fname = ''
+      this.editForm.lname = ''
       this.errorMessage = ''
     },
 
@@ -250,13 +250,13 @@ export default {
 
       try {
         await api.put(`account/profile`, {
-          firstName: this.editForm.firstName,
-          lastName: this.editForm.lastName
+          firstName: this.editForm.fname,
+          lastName: this.editForm.lname
         })
 
         // Update profile data
-        this.profile.firstName = this.editForm.firstName
-        this.profile.lastName = this.editForm.lastName
+        this.profile.fname = this.editForm.fname
+        this.profile.lname = this.editForm.lname
 
         this.editMode = false
         this.errorMessage = 'Profile updated successfully!'
