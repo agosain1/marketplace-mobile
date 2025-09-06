@@ -139,18 +139,7 @@ def get_listings(user_id: Optional[str] = None,
         .order_by(Listings.created_at.desc())
     )
 
-    if org_filter:
-        # get caller's email
-        asker = db.query(Users).filter(Users.id == user_id).first()
-        if asker:
-            email = asker.email
-            org = email.split('@')[-1]
-            query = query.filter(Users.email.ilike(f"%@{org}"))
-    if user_id:
-        query = query.filter(Listings.seller_id != user_id)
-
-    if lat and lon and dist:
-        query = filter_by_location(query, lat, lon, dist)
+    query = apply_filters(user_id, query, lat, lon, dist, org_filter)
 
     listings = query.all()
 
@@ -167,18 +156,15 @@ def get_listings(user_id: Optional[str] = None,
 def search_listing(q: str, user_id: Optional[str] = None, db: Session = Depends(get_db),
                     lat: Optional[float] = None,
                  lon: Optional[float] = None,
-                 dist: Optional[float] = None):
+                 dist: Optional[float] = None,
+                   org_filter: Optional[bool] = False):
     query = (
         db.query(Listings)
         .join(Users, Listings.seller_id == Users.id)
         .order_by(Listings.created_at.desc())
     )
 
-    if user_id:
-        query = query.filter(Listings.seller_id != user_id)
-
-    if lat and lon and dist:
-        query = filter_by_location(query, lat, lon, dist)
+    query = apply_filters(user_id, query, lat, lon, dist, org_filter)
 
     if q:
         query = query.filter(
@@ -310,5 +296,21 @@ def filter_by_location(query: Query[Listing], lat: Optional[float] = None,
             Listings.latitude.between(lat_min, lat_max),
             Listings.longitude.between(lng_min, lng_max)
         )
+
+    return query
+
+def apply_filters(user_id: str, query: Query[Listing], lat, lon, dist, org_filter, db = Depends(get_db)):
+    if org_filter:
+        # get caller's email
+        asker = db.query(Users).filter(Users.id == user_id).first()
+        if asker:
+            email = asker.email
+            org = email.split('@')[-1]
+            query = query.filter(Users.email.ilike(f"%@{org}"))
+    if user_id:
+        query = query.filter(Listings.seller_id != user_id)
+
+    if lat and lon and dist:
+        query = filter_by_location(query, lat, lon, dist)
 
     return query
