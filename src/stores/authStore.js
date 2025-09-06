@@ -37,7 +37,7 @@ export const useAuthStore = defineStore('auth', {
         const result = await authService.validateToken()
 
         if (result.success) {
-          this.setAuth(result.user)
+          this.setAuth(result.data.user)
           return true
         } else {
           this.clearAuth()

@@ -129,7 +129,8 @@ def get_listings(user_id: Optional[str] = None,
                  db: Session = Depends(get_db),
                  lat: Optional[float] = None,
                  lon: Optional[float] = None,
-                 dist: Optional[float] = None
+                 dist: Optional[float] = None,
+                 org_filter: Optional[bool] = False
                  ):
     # Query listings with seller information using SQLAlchemy relationships
     query = (
@@ -138,6 +139,13 @@ def get_listings(user_id: Optional[str] = None,
         .order_by(Listings.created_at.desc())
     )
 
+    if org_filter:
+        # get caller's email
+        asker = db.query(Users).filter(Users.id == user_id).first()
+        if asker:
+            email = asker.email
+            org = email.split('@')[-1]
+            query = query.filter(Users.email.ilike(f"%@{org}"))
     if user_id:
         query = query.filter(Listings.seller_id != user_id)
 
