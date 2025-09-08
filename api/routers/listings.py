@@ -7,10 +7,11 @@ from sqlalchemy import or_
 from .auth import verify_jwt_token
 from fastapi import HTTPException, status
 from api.services.s3_service import get_s3_service
-from api.services.location_service import get_location_from_coords, search_location, search_location_suggestions, get_bounding_box_corners
+from api.services.location_service import (get_location_from_coords,
+                                           search_location, search_location_suggestions,
+                                           get_bounding_box_corners, generate_coord_offset)
 from typing import List, Optional
 import uuid
-
 router = APIRouter(
     prefix="/listings",
     tags=["listings"]
@@ -273,6 +274,8 @@ def get_location_suggestions(query: str, limit: int = 5, db: Session = Depends(g
     return {"suggestions": suggestions}
 
 def format_listing(listing: Listing, seller: Users, dist_away: float = None):
+    # return approx location, 0.2 < center < 0.5 miles, using id as a random seed
+    listing.latitude, listing.longitude = generate_coord_offset(str(listing.id), listing.latitude, listing.longitude, 0.2, 0.5)
     return {
         "listing": listing,
         "seller": seller,
