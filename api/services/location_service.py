@@ -54,6 +54,7 @@ def get_location_from_coords(lat, lon):
 
     # --- Fallback to Mapbox ---
     try:
+        print('using mapbox')
         mapbox_url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{lon},{lat}.json"
         mapbox_res = requests.get(mapbox_url, params={"access_token": MAPBOX_TOKEN})
         mapbox_data = mapbox_res.json()
@@ -99,17 +100,17 @@ def search_us_zipcode_db(query, db: Session):
                 result = db.query(UsZipcodes).filter(
                     UsZipcodes.city.ilike(city),
                     UsZipcodes.state_code.ilike(state)
-                ).order_by(UsZipcodes.zipcode.desc()).first()
+                ).order_by(UsZipcodes.zipcode.asc()).first()
             # full state name
             else:
                 result = db.query(UsZipcodes).filter(
                     UsZipcodes.city.ilike(city),
                     UsZipcodes.state.ilike(state)
-                ).order_by(UsZipcodes.zipcode.desc()).first()
+                ).order_by(UsZipcodes.zipcode.asc()).first()
         else:
             result = db.query(UsZipcodes).filter(
                 UsZipcodes.city.ilike(query)
-            ).order_by(UsZipcodes.zipcode.desc()).first()
+            ).order_by(UsZipcodes.zipcode.asc()).first()
     
     if result:
         return {
@@ -130,6 +131,8 @@ def search_location(query, db: Session = None):
         us_result = search_us_zipcode_db(query, db)
         if us_result:
             return us_result
+
+    print('using mapbox')
     
     # Fall back to Mapbox API for international locations or unmatched queries
     url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{query}.json?access_token={MAPBOX_TOKEN}&limit=1"

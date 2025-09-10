@@ -92,6 +92,16 @@
             class="full-width"
             :loading="loading"
           />
+
+          <!-- Forgot Password Button -->
+          <q-btn
+            v-if="isLogin"
+            flat
+            color="grey-6"
+            label="Forgot Password?"
+            @click="showForgotPasswordDialog = true"
+            class="full-width q-mt-sm"
+          />
         </q-form>
 
         <!-- Divider -->
@@ -125,6 +135,39 @@
       </q-page>
     </q-page-container>
   </q-layout>
+
+  <!-- Forgot Password Dialog -->
+  <q-dialog v-model="showForgotPasswordDialog">
+    <q-card style="min-width: 300px">
+      <q-card-section>
+        <div class="text-h6">Reset Password</div>
+      </q-card-section>
+
+      <q-card-section>
+        <q-input
+          v-model="forgotPasswordEmail"
+          label="Email Address"
+          type="email"
+          outlined
+          :rules="[
+            val => !!val || 'Email is required',
+            val => /.+@.+\..+/.test(val) || 'Please enter a valid email'
+          ]"
+          ref="emailInput"
+        />
+      </q-card-section>
+
+      <q-card-actions align="right">
+        <q-btn flat label="Cancel" @click="showForgotPasswordDialog = false" />
+        <q-btn 
+          color="primary" 
+          label="Send Reset Link" 
+          @click="sendPasswordReset"
+          :loading="resetLoading"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script>
@@ -150,7 +193,10 @@ export default {
         email: '',
         password: '',
         confirmPassword: ''
-      }
+      },
+      showForgotPasswordDialog: false,
+      forgotPasswordEmail: '',
+      resetLoading: false
     }
   },
   computed: {
@@ -297,6 +343,44 @@ export default {
     handleGoogleSignInError(error) {
       console.error('Google Sign-In error:', error)
       this.errorMessage = `Google Sign-In failed: ${error}`
+    },
+
+    async sendPasswordReset() {
+      // Basic email validation
+      if (!this.forgotPasswordEmail || !/.+@.+\..+/.test(this.forgotPasswordEmail)) {
+        this.$q.notify({
+          type: 'negative',
+          message: 'Please enter a valid email address'
+        })
+        return
+      }
+
+      this.resetLoading = true
+
+      try {
+        const response = await api.post('auth/forgot-password', {
+          email: this.forgotPasswordEmail
+        })
+
+        // Show success message
+        this.$q.notify({
+          type: 'positive',
+          message: response.data.message || 'Password reset link sent to your email!'
+        })
+
+        // Close dialog and clear email
+        this.showForgotPasswordDialog = false
+        this.forgotPasswordEmail = ''
+
+      } catch (error) {
+        console.error('Password reset error:', error)
+        this.$q.notify({
+          type: 'negative',
+          message: error.response?.data?.detail || 'Failed to send password reset email'
+        })
+      } finally {
+        this.resetLoading = false
+      }
     }
   }
 }
