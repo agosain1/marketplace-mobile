@@ -27,6 +27,13 @@ class Listing(BaseModel):
     longitude: Optional[float] = None
     condition: str
 
+class User(BaseModel):
+    id: uuid.UUID
+    fname: str
+    lname: str
+    email: str
+    pfp_url: Optional[list[str]] = None
+
 @router.post("")
 async def create_listing(
     title: str = Form(...),
@@ -276,10 +283,11 @@ def get_location_suggestions(query: str, limit: int = 5, db: Session = Depends(g
 def format_listing(listing: Listing, seller: Users, dist_away: float = None):
     # return approx location, 0.2 < center < 0.5 miles, using id as a random seed
     listing.latitude, listing.longitude = generate_coord_offset(str(listing.id), listing.latitude, listing.longitude, 0.2, 0.5)
+    seller_model = User(id=seller.id, fname=seller.fname, lname=seller.lname, email=seller.email, pfp_url=seller.pfp_url)
     return {
         "listing": listing,
-        "seller": seller,
-        "dist_away": dist_away if dist_away else None
+        "seller": seller_model,
+        dist_away: dist_away
     }
 
 def filter_by_location(query: Query[Listing], lat: Optional[float] = None,
