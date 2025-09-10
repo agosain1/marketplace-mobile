@@ -86,11 +86,7 @@ def get_profile(token_data: dict = Depends(verify_jwt_token), db: Session = Depe
         )
 
     return {
-        "firstName": user.fname,
-        "lastName": user.lname,
-        "email": user.email,
-        "isGoogleUser": bool(user.google_id),
-        "pfp_url": user.pfp_url
+        "user": user
     }
 
 
@@ -115,10 +111,7 @@ def update_profile(profile_data: UpdateProfile, token_data: dict = Depends(verif
 
     return {
         "message": "Profile updated successfully",
-        "user": {
-            "id": str(user.id),
-            "email": user.email
-        }
+        "user": user
     }
 
 @router.put('/upload_pfp')

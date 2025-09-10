@@ -2,35 +2,82 @@ import os
 from dotenv import load_dotenv
 import re
 import math
+import random
+from decimal import Decimal, getcontext
+from typing import Union, Tuple
+
+# precision for lat/lon
+getcontext().prec = 12
 
 load_dotenv()
 
-token = os.getenv("MAPBOX_ACCESS_TOKEN")
+MAPBOX_TOKEN = os.getenv("MAPBOX_ACCESS_TOKEN")
 
 import requests
 from api.models import UsZipcodes
 from sqlalchemy.orm import Session
 
 def get_location_from_coords(lat, lon):
-    url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{lon},{lat}.json?access_token={token}"
-    res = requests.get(url)
-    data = res.json()
+    """
+    Reverse geocode coordinates to a location string using:
+    1. OpenStreetMap (primary)
+    2. Mapbox (fallback)
+    """
+    # --- Try OpenStreetMap first ---
+    try:
+        osm_url = f"https://nominatim.openstreetmap.org/reverse"
+        osm_res = requests.get(
+            osm_url,
+            params={
+                "lat": lat,
+                "lon": lon,
+                "format": "json",
+                "addressdetails": 1
+            },
+            headers={"User-Agent": "YourAppName/1.0"}
+        )
+        osm_data = osm_res.json()
+        address = osm_data.get("address", {})
 
-    city, state, country = None, None, None
+        city = address.get("city") or address.get("town") or address.get("village")
+        state = address.get("state")
+        country = address.get("country")
 
-    for feature in data["features"]:
-        if "place" in feature["place_type"]:
-            city = feature["text"]
-        if "region" in feature["place_type"]:
-            state = feature["text"]
-        if "country" in feature["place_type"]:
-            country = feature["text"]
+        if country:
+            if country == "United States" and city and state:
+                return f"{city}, {state}"
+            elif city and country:
+                return f"{city}, {country}"
+            return city or state or country
+    except Exception:
+        pass  # If OpenStreetMap fails, fallback to Mapbox
 
-    if country == "United States" and city and state:
-        return f"{city}, {state}"
-    elif city and country:
-        return f"{city}, {country}"
-    return city or state or country or "Unknown"
+    # --- Fallback to Mapbox ---
+    try:
+        print('using mapbox')
+        mapbox_url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{lon},{lat}.json"
+        mapbox_res = requests.get(mapbox_url, params={"access_token": MAPBOX_TOKEN})
+        mapbox_data = mapbox_res.json()
+
+        city, state, country = None, None, None
+        for feature in mapbox_data.get("features", []):
+            if "place" in feature.get("place_type", []):
+                city = feature.get("text")
+            if "region" in feature.get("place_type", []):
+                state = feature.get("text")
+            if "country" in feature.get("place_type", []):
+                country = feature.get("text")
+
+        if country:
+            if country == "United States" and city and state:
+                return f"{city}, {state}"
+            elif city and country:
+                return f"{city}, {country}"
+            return city or state or country
+    except Exception:
+        pass
+
+    return "Unknown"
 
 def search_us_zipcode_db(query, db: Session):
     """
@@ -53,17 +100,17 @@ def search_us_zipcode_db(query, db: Session):
                 result = db.query(UsZipcodes).filter(
                     UsZipcodes.city.ilike(city),
                     UsZipcodes.state_code.ilike(state)
-                ).order_by(UsZipcodes.zipcode.desc()).first()
+                ).order_by(UsZipcodes.zipcode.asc()).first()
             # full state name
             else:
                 result = db.query(UsZipcodes).filter(
                     UsZipcodes.city.ilike(city),
                     UsZipcodes.state.ilike(state)
-                ).order_by(UsZipcodes.zipcode.desc()).first()
+                ).order_by(UsZipcodes.zipcode.asc()).first()
         else:
             result = db.query(UsZipcodes).filter(
                 UsZipcodes.city.ilike(query)
-            ).order_by(UsZipcodes.zipcode.desc()).first()
+            ).order_by(UsZipcodes.zipcode.asc()).first()
     
     if result:
         return {
@@ -84,9 +131,11 @@ def search_location(query, db: Session = None):
         us_result = search_us_zipcode_db(query, db)
         if us_result:
             return us_result
+
+    print('using mapbox')
     
     # Fall back to Mapbox API for international locations or unmatched queries
-    url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{query}.json?access_token={token}&limit=1"
+    url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{query}.json?access_token={MAPBOX_TOKEN}&limit=1"
     res = requests.get(url)
     
     if res.status_code != 200:
@@ -198,5 +247,27 @@ def get_bounding_box_corners(lat, lon, distance_miles):
         "southeast": southeast,
         "southwest": southwest
     }
+
+def generate_coord_offset(seed: str, lat: Union[float, Decimal],
+                          lon: Union[float, Decimal],
+                          min_distance_miles: float = 0.2,
+                          max_distance_miles: float = 0.5) -> Tuple[Decimal, Decimal]:
+    lat, lon = float(lat), float(lon)
+
+    rng = random.Random(seed)
+
+    angle = rng.uniform(0, 2 * math.pi)
+
+    distance_miles = rng.uniform(min_distance_miles, max_distance_miles)
+
+    # Convert miles to degrees
+    lat_deg_per_mile = 1 / 69.0
+    lon_deg_per_mile = 1 / (69.0 * math.cos(math.radians(lat)))
+
+    # Random offsets (consistent per seed)
+    lat_offset = distance_miles * lat_deg_per_mile * math.cos(angle)
+    lng_offset = distance_miles * lon_deg_per_mile * math.sin(angle)
+
+    return Decimal(str(lat + lat_offset)), Decimal(str(lon + lng_offset))
 
 # {'northeast': (37.144730169528856, -120.81877819392193), 'northwest': (37.144730169528856, -121.18122180607807), 'southeast': (36.855269830471144, -120.81877819392193), 'southwest': (36.855269830471144, -121.18122180607807)}

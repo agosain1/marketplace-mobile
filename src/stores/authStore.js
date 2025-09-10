@@ -13,7 +13,7 @@ export const useAuthStore = defineStore('auth', {
     isLoggedIn: (state) => state.isAuthenticated && !!state.user,
     userFullName: (state) => {
       if (!state.user) return ''
-      return `${state.user.firstName || ''} ${state.user.lastName || ''}`.trim()
+      return `${state.user.fname || ''} ${state.user.lname || ''}`.trim()
     }
   },
 
