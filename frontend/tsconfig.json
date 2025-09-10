@@ -1,0 +1,6 @@
+{
+  "compilerOptions": {
+    "types": ["quasar"]
+  },
+  "extends": "./.quasar/tsconfig.json"
+}
