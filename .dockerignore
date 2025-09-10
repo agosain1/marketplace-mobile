@@ -44,4 +44,4 @@ api/*.pyc
 
 # Misc
 README.md
-.editorconfig
+frontend/.editorconfig
