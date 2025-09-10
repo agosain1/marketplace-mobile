@@ -21,20 +21,6 @@ class MailerSendService:
             raise ValueError("FROM_EMAIL environment variable is required")
 
     def send_verification_email(self, recipient_email: str, verification_code: str, first_name: str) -> bool:
-        """
-        Send verification email using MailerSend API
-        
-        Args:
-            recipient_email: Email address to send to
-            verification_code: 6-digit verification code
-            first_name: Recipient's first name
-            
-        Returns:
-            bool: True if sent successfully, False otherwise
-            
-        Raises:
-            HTTPException: If email sending fails
-        """
         try:
             # Create MailerSend client
             ms = MailerSendClient(api_key=self.api_key)
@@ -86,6 +72,58 @@ class MailerSendService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Email sending failed: {str(e)}"
+            )
+
+    def send_password_reset_email(self, recipient_email: str):
+        try:
+            # Create MailerSend client
+            ms = MailerSendClient(api_key = self.api_key)
+
+            # Configure sender
+            mail_from = {
+                "name": self.from_name,
+                "email": self.from_email,
+            }
+
+            # Configure recipient
+            recipient = {
+                "email": recipient_email,
+            }
+
+            # Email content
+            subject = "Reset your Unimarket Password"
+            html_content = self._get_reset_password_html()
+            plain_content = self._get_reset_password_text()
+
+            email = (EmailBuilder()
+                     .from_email(mail_from["email"], mail_from["name"])
+                     .to_many([{"email": recipient["email"]}])
+                     .subject(subject)
+                     .html(html_content)
+                     .text(plain_content)
+                     .build())
+
+            # Send the email
+            response = ms.emails.send(email)
+
+            # Check if send was successful
+            if response and hasattr(response, 'status_code'):
+                if response.status_code in [200, 201, 202]:
+                    return True
+                else:
+                    raise HTTPException(
+                        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail = f"Failed to send email. Status: {response.status_code}"
+                    )
+
+            # If no clear response, assume success (MailerSend API behavior)
+            return True
+
+        except Exception as e:
+            print(f"MailerSend error: {str(e)}")
+            raise HTTPException(
+                status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail = f"Email sending failed: {str(e)}"
             )
 
     def _get_verification_html(self, first_name: str, verification_code: str) -> str:
@@ -168,21 +206,114 @@ class MailerSendService:
     def _get_verification_plain_text(self, first_name: str, verification_code: str) -> str:
         """Generate plain text content for verification email"""
         return f"""
-Welcome to Unimarket!
+            Welcome to Unimarket!
+            
+            Hi {first_name},
+            
+            Thank you for signing up for Unimarket. To complete your registration, please verify your email address using the code below:
+            
+            Verification Code: {verification_code}
+            
+            This verification code will expire in 10 minutes.
+            
+            If you didn't create an account with Unimarket, please ignore this email.
+            
+            Best regards,
+            The Unimarket Team
+                    """.strip()
 
-Hi {first_name},
+    def _get_reset_password_html(self) -> str:
+        """Generate HTML content for reset password email"""
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Reset Your Password</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    margin: 0;
+                    padding: 20px;
+                    background-color: #f4f4f4;
+                }}
+                .container {{
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background: white;
+                    padding: 20px;
+                    border-radius: 10px;
+                    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                }}
+                .header {{
+                    text-align: center;
+                    color: #333;
+                    border-bottom: 2px solid #4CAF50;
+                    padding-bottom: 20px;
+                    margin-bottom: 20px;
+                }}
+                .code {{
+                    font-size: 36px;
+                    font-weight: bold;
+                    color: #4CAF50;
+                    text-align: center;
+                    letter-spacing: 4px;
+                    margin: 30px 0;
+                    padding: 20px;
+                    background-color: #f8f9fa;
+                    border-radius: 8px;
+                    border: 2px dashed #4CAF50;
+                }}
+                .footer {{
+                    text-align: center;
+                    margin-top: 30px;
+                    padding-top: 20px;
+                    border-top: 1px solid #eee;
+                    color: #666;
+                    font-size: 14px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Welcome to Unimarket!</h1>
+                </div>
+                <h2>Hi,</h2>
+                <p>Reset your password using the link below:</p>
 
-Thank you for signing up for Unimarket. To complete your registration, please verify your email address using the code below:
+                <div class="code">
+                    link
+                </div>
 
-Verification Code: {verification_code}
+                <p>If you didn't request to change your password, please ignore this email.</p>
 
-This verification code will expire in 10 minutes.
+                <div class="footer">
+                    <p>Best regards,<br>The Unimarket Team</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
 
-If you didn't create an account with Unimarket, please ignore this email.
+    def _get_reset_password_text(self) -> str:
+        """Generate plain text content for reset password email"""
+        return f"""
+            Welcome to Unimarket!
 
-Best regards,
-The Unimarket Team
-        """.strip()
+            Hi,
+
+            Reset your password using the link below:
+
+            link
+
+            If you didn't request to change your password, please ignore this email.
+
+            Best regards,
+            The Unimarket Team
+                    """.strip()
 
 
 # Global instance
