@@ -53,7 +53,7 @@
             <div class="row q-col-gutter-sm q-mb-md">
               <div class="col">
                 <q-input
-                  v-model="editForm.firstName"
+                  v-model="editForm.fname"
                   label="First Name"
                   outlined
                   :rules="[val => !!val || 'First name is required']"
@@ -62,7 +62,7 @@
               </div>
               <div class="col">
                 <q-input
-                  v-model="editForm.lastName"
+                  v-model="editForm.lname"
                   label="Last Name"
                   outlined
                   :rules="[val => !!val || 'Last name is required']"
@@ -77,7 +77,7 @@
                 color="positive"
                 icon="save"
                 :loading="loading"
-                :disable="!editForm.firstName || !editForm.lastName"
+                :disable="!editForm.fname || !editForm.lname"
               >
                 Save Changes
               </q-btn>
@@ -95,7 +95,7 @@
 
           <div v-else>
             <div class="q-mb-sm">
-              <strong>Name:</strong> {{ profile.firstName }} {{ profile.lastName }}
+              <strong>Name:</strong> {{ profile.fname }} {{ profile.lname }}
               <q-btn
                 flat
                 dense
@@ -192,8 +192,8 @@ export default {
       errorMessage: '',
       uploadingImage: false,
       editForm: {
-        firstName: '',
-        lastName: ''
+        fname: '',
+        lname: ''
       }
     }
   },
@@ -214,9 +214,10 @@ export default {
 
       try {
         const response = await api.get(`account/profile`)
-        this.profile = response.data
+        this.profile = response.data.user
         console.log(this.profile)
-        if (this.profile.pfp_url.length === 0) {
+        this.profile.isGoogleUser = this.profile.google_id !== null
+        if (!this.profile.pfp_url || this.profile.pfp_url.length === 0) {
           this.profile.pfp_url = 'https://toppng.com/uploads/preview/instagram-default-profile-picture-11562973083brycehrmyv.png' // DEFAULT URL
         }
       } catch (error) {
@@ -231,15 +232,15 @@ export default {
 
     startEdit() {
       this.editMode = true
-      this.editForm.firstName = this.profile.firstName
-      this.editForm.lastName = this.profile.lastName
+      this.editForm.fname = this.profile.fname
+      this.editForm.lname = this.profile.lname
       this.errorMessage = ''
     },
 
     cancelEdit() {
       this.editMode = false
-      this.editForm.firstName = ''
-      this.editForm.lastName = ''
+      this.editForm.fname = ''
+      this.editForm.lname = ''
       this.errorMessage = ''
     },
 
@@ -249,13 +250,13 @@ export default {
 
       try {
         await api.put(`account/profile`, {
-          firstName: this.editForm.firstName,
-          lastName: this.editForm.lastName
+          firstName: this.editForm.fname,
+          lastName: this.editForm.lname
         })
 
         // Update profile data
-        this.profile.firstName = this.editForm.firstName
-        this.profile.lastName = this.editForm.lastName
+        this.profile.fname = this.editForm.fname
+        this.profile.lname = this.editForm.lname
 
         this.editMode = false
         this.errorMessage = 'Profile updated successfully!'

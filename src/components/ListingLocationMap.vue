@@ -58,9 +58,9 @@ onMounted(() => {
 const updateLocationMarker = () => {
   if (!map || !props.latitude || !props.longitude) return
 
-  // Calculate radius based on zoom level (minimum 1.5 miles, increases as zoom decreases)
+  // Calculate radius based on zoom level (minimum 0.5 miles, increases as zoom decreases)
   const currentZoom = map.getZoom()
-  const baseRadius = 1.5 // minimum radius in miles
+  const baseRadius = 0.5 // minimum radius in miles
   const zoomFactor = Math.max(1, (15 - currentZoom) * 0.5) // Scale factor based on zoom
   const radiusInMiles = baseRadius * zoomFactor
   const radiusInMeters = radiusInMiles * 1609.34 // Convert miles to meters

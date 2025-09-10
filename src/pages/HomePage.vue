@@ -49,19 +49,50 @@
       <q-page>
         <div class="q-pa-lg">
           <h4>Current Listings</h4>
+
+          <!-- Search Box -->
+          <div class="q-mb-lg">
+            <q-input
+              v-model="searchQuery"
+              placeholder="Search listings..."
+              outlined
+              clearable
+              @keyup.enter="searchListings"
+              class="q-mb-sm"
+            >
+              <template v-slot:append>
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="search"
+                  @click="searchListings"
+                  :loading="searchLoading"
+                />
+              </template>
+            </q-input>
+            <q-btn
+              v-if="isSearching"
+              flat
+              label="Show All Listings"
+              @click="clearSearch"
+              color="grey-6"
+              size="sm"
+            />
+          </div>
           <div class="row">
             <div
-              v-for="(listing, index) in listings"
+              v-for="(listing, index) in response"
               :key="index"
               class="col-xs-12 col-sm-6 col-md-4 col-lg-3"
             >
               <div class="q-pa-sm">
-                <q-card class="full-height cursor-pointer" @click="goToListing(listing.id)">
+                <q-card class="full-height cursor-pointer" @click="goToListing(listing.listing.id)">
             <q-card-section>
-              <div v-if="listing.images && listing.images.length > 0" class="q-mb-md" style="height: 150px;">
+              <div v-if="listing.listing.images && listing.listing.images.length > 0" class="q-mb-md" style="height: 150px;">
                 <!-- Image Carousel -->
                 <q-carousel
-                  v-if="listing.images.length > 1"
+                  v-if="listing.listing.images.length > 1"
                   v-model="imageSlides[index]"
                   swipeable
                   animated
@@ -71,14 +102,14 @@
                   @click.stop
                 >
                   <q-carousel-slide
-                    v-for="(image, imgIndex) in listing.images"
+                    v-for="(image, imgIndex) in listing.listing.images"
                     :key="imgIndex"
                     :name="imgIndex"
                     class="column no-wrap flex-center"
                   >
                     <q-img
                       :src="image"
-                      :alt="`${listing.title} - Image ${imgIndex + 1}`"
+                      :alt="`${listing.listing.title} - Image ${imgIndex + 1}`"
                       fit="cover"
                       style="height: 150px; width: 100%;"
                       class="rounded-borders"
@@ -89,21 +120,23 @@
                 <!-- Single Image -->
                 <q-img
                   v-else
-                  :src="listing.images[0]"
-                  :alt="listing.title"
+                  :src="listing.listing.images[0]"
+                  :alt="listing.listing.title"
                   fit="cover"
                   style="height: 150px; width: 100%;"
                   class="rounded-borders"
                 />
               </div>
-              <div class="text-h6">{{ listing.title }}</div>
-              <div class="text-subtitle2">{{ "$" + listing.price + " " + listing.currency }}</div>
-              <div class="text-subtitle2">{{ listing.location }}</div>
+              <div class="text-h6">{{ listing.listing.title }}</div>
+              <div class="text-subtitle2">{{ "$" + listing.listing.price + " " + listing.listing.currency
+                }}</div>
+              <div class="text-subtitle2">{{ listing.listing.location }}</div>
+              <div v-if="listing.dist_away" class="text-subtitle2">{{ listing.dist_away + " miles away"}}</div>
 
             </q-card-section>
             <q-card-actions align="right">
               <q-btn
-                v-if="isLoggedIn && listing.seller_email !== currentUserEmail"
+                v-if="isLoggedIn && listing.seller.email !== currentUserEmail"
                 flat
                 color="primary"
                 icon="message"
@@ -143,13 +176,16 @@ export default {
   data() {
     return {
       leftDrawerOpen: false,
-      listings: [],
+      response: [],
       imageSlides: {}, // Track current slide for each listing's carousel
       unreadCount: 0,
       currentUserEmail: null,
       showMessageDialog: false,
       selectedSeller: {},
       selectedListing: {},
+      searchQuery: '',
+      searchLoading: false,
+      isSearching: false,
     }
   },
   computed: {
@@ -158,29 +194,44 @@ export default {
       return authStore.isLoggedIn
     }
   },
+  watch: {
+    // Watch for auth changes and reload listings with proper user_id
+    isLoggedIn(newValue, oldValue) {
+      // Only reload if auth state actually changed
+      if (newValue !== oldValue) {
+        this.getCurrentUser().then(() => {
+          this.getListings()
+          this.getUnreadCount()
+        })
+      }
+    }
+  },
   methods: {
     async getListings() {
       try {
         const authStore = useAuthStore()
         const res = await api.get(`listings`, {
           params: {
-            user_id: authStore.user ? authStore.user.id : null
+            user_id: authStore.user ? authStore.user.id : null,
+            lat: 37, // TEMP PLACEHOLDERS
+            lon: -121,
+            dist: 100
           }
         })
         console.log("API response:", res.data) // Debug log
 
         // Ensure listings is always an array
-        this.listings = Array.isArray(res.data) ? res.data : []
+        this.response = Array.isArray(res.data) ? res.data : []
 
         // Initialize image slides for each listing
         const slides = {}
-        this.listings.forEach((listing, index) => {
+        this.response.forEach((listing, index) => {
           slides[index] = 0 // Start at first image
         })
         this.imageSlides = slides
       } catch (e) {
         console.error("Error fetching listings:", e)
-        this.listings = [] // Fallback to empty array on error
+        this.response = [] // Fallback to empty array on error
       }
     },
     goToAddListing() {
@@ -225,13 +276,13 @@ export default {
     messageSeller(listing) {
       // Set up dialog data and show it
       this.selectedSeller = {
-        name: listing.seller_name,
-        email: listing.seller_email
+        name: `${listing.seller.fname} ${listing.seller.lname}`,
+        email: listing.seller.email
       }
       this.selectedListing = {
-        title: listing.title,
-        price: listing.price,
-        currency: listing.currency
+        title: listing.listing.title,
+        price: listing.listing.price,
+        currency: listing.listing.currency
       }
       this.showMessageDialog = true
     },
@@ -253,12 +304,56 @@ export default {
         console.error("Error getting current user:", e)
         this.currentUserEmail = null
       }
+    },
+
+    async searchListings() {
+      if (!this.searchQuery.trim()) {
+        return
+      }
+
+      this.searchLoading = true
+      this.isSearching = true
+
+      try {
+        const authStore = useAuthStore()
+        const res = await api.get(`listings/search`, {
+          params: {
+            q: this.searchQuery.trim(),
+            user_id: authStore.user ? authStore.user.id : null
+          }
+        })
+
+        // Ensure listings is always an array
+        this.response = Array.isArray(res.data) ? res.data : []
+
+        // Initialize image slides for search results
+        const slides = {}
+        this.response.forEach((listing, index) => {
+          slides[index] = 0 // Start at first image
+        })
+        this.imageSlides = slides
+
+      } catch (e) {
+        console.error("Error searching listings:", e)
+        this.response = []
+      } finally {
+        this.searchLoading = false
+      }
+    },
+
+    async clearSearch() {
+      this.searchQuery = ''
+      this.isSearching = false
+      await this.getListings() // Load all listings again
     }
   },
   async mounted() {
-    await this.getCurrentUser()    // get current user info first
-    this.getListings()             // then fetch filtered listings
-    this.getUnreadCount()          // fetch unread count on mount
+    // Wait a bit for auth store to be populated from validateToken
+    setTimeout(async () => {
+      await this.getCurrentUser()    // get current user info first
+      this.getListings()             // then fetch filtered listings
+      this.getUnreadCount()          // fetch unread count on mount
+    }, 100) // Small delay to ensure auth store is populated
 
     // Listen for message updates from other pages
     this.handleStorageChange = (e) => {

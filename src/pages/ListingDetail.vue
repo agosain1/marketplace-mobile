@@ -3,7 +3,7 @@
     <q-header elevated>
       <q-toolbar>
         <q-btn flat dense round icon="arrow_back" @click="goBack" />
-        <q-toolbar-title>{{ listing?.title || 'Loading...' }}</q-toolbar-title>
+        <q-toolbar-title>{{ response?.listing.title || 'Loading...' }}</q-toolbar-title>
         <q-btn v-if="!isLoggedIn" flat @click="goToLogin"> Login </q-btn>
         <q-btn v-else flat dense round icon="account_circle" @click="goToAccount" />
       </q-toolbar>
@@ -27,16 +27,16 @@
           </q-card>
         </div>
 
-        <div v-else-if="listing" class="q-pa-lg">
+        <div v-else-if="response" class="q-pa-lg">
           <div class="row q-col-gutter-lg">
             <!-- Left side - Images -->
             <div class="col-xs-12 col-sm-8 col-md-8 col-lg-8">
               <q-card class="full-height">
                 <!-- Images Section -->
-                <div v-if="listing.images && listing.images.length > 0" class="full-height">
+                <div v-if="response.listing.images && response.listing.images.length > 0" class="full-height">
                   <!-- Image Carousel for multiple images -->
                   <q-carousel
-                    v-if="listing.images.length > 1"
+                    v-if="response.listing.images.length > 1"
                     v-model="currentSlide"
                     :swipeable="$q.screen.xs"
                     animated
@@ -46,14 +46,14 @@
                     class="bg-grey-1 shadow-2 rounded-borders carousel-with-arrows full-height"
                   >
                     <q-carousel-slide
-                      v-for="(image, imgIndex) in listing.images"
+                      v-for="(image, imgIndex) in response.listing.images"
                       :key="imgIndex"
                       :name="imgIndex"
                       class="column no-wrap flex-center"
                     >
                       <q-img
                         :src="image"
-                        :alt="`${listing.title} - Image ${imgIndex + 1}`"
+                        :alt="`${response.listing.title} - Image ${imgIndex + 1}`"
                         fit="contain"
                         style="max-height: 600px; width: 100%;"
                         class="rounded-borders"
@@ -64,21 +64,21 @@
                   <!-- Single Image -->
                   <q-img
                     v-else
-                    :src="listing.images[0]"
-                    :alt="listing.title"
+                    :src="response.listing.images[0]"
+                    :alt="response.listing.title"
                     fit="contain"
                     style="height: 600px; width: 100%;"
                     class="rounded-borders"
                   />
 
                   <!-- Image Counter -->
-                  <div v-if="listing.images.length > 1" class="absolute-top-right q-ma-sm">
+                  <div v-if="response.listing.images.length > 1" class="absolute-top-right q-ma-sm">
                     <q-chip
                       dense
                       color="black"
                       text-color="white"
                       icon="photo"
-                      :label="`${currentSlide + 1}/${listing.images.length}`"
+                      :label="`${currentSlide + 1}/${response.listing.images.length}`"
                     />
                   </div>
                 </div>
@@ -92,43 +92,50 @@
                 <q-card-section>
                   <div class="">
                     <div class="col">
-                      <div class="text-h5 q-mb-sm text-blue-7">{{ listing.title }}</div>
-                      <div class="text-h6 text-green-7 q-mb-sm">${{ listing.price }} {{ listing.currency }}</div>
-                      <div class="text-body1 text-indigo-7 q-mb-xs">Seller: {{ listing.seller_name || 'Unknown' }}</div>
-                      <div class="text-body2 text-grey-7 q-mb-xs">Category: {{ listing.category }}</div>
-                      <div class="text-body2 text-grey-7 q-mb-sm">Condition: {{ listing.condition }}</div>
+                      <div class="text-h5 q-mb-sm text-blue-7">{{ response.listing.title }}</div>
+                      <div class="text-h6 text-green-7 q-mb-sm">${{ response.listing.price }}
+                        {{ response.listing.currency }}</div>
+                      <div class="text-body1 text-indigo-7 q-mb-xs">Seller:
+                        {{ response.seller.fname + " " + response.seller.lname || 'Unknown' }}</div>
+                      <div class="text-body2 text-grey-7 q-mb-xs">Category: {{ response.listing.category }}</div>
+                      <div class="text-body2 text-grey-7 q-mb-sm">Condition: {{ response.listing.condition
+                        }}</div>
                       <div class="text-blue-7 text-h6 q-mb-xs">Description</div>
-                      <div class="text-wrap text-black text-body1 q-mb-md">{{ listing.description }}</div>
+                      <div class="text-wrap text-black text-body1 q-mb-md">{{ response.listing.description
+                        }}</div>
                     </div>
                     <div class="col-auto">
                       <q-btn
-                        v-if="isLoggedIn && listing.seller_email !== currentUserEmail"
+                        v-if="isLoggedIn && response.seller.email !== currentUserEmail"
+                        flat
                         color="primary"
                         icon="message"
                         label="Message Seller"
-                        @click="messageSeller"
-                        size="md"
+                        @click.stop="messageSeller(response)"
                       />
                     </div>
                   </div>
                 </q-card-section>
 
                 <!-- Location Map Section -->
-                <q-card-section v-if="listing.latitude && listing.longitude">
-                  <h6 class="q-ma-none q-mb-md text-grey-8">Approximate Location: {{ listing.location }}</h6>
+                <q-card-section v-if="response.listing.latitude && response.listing.longitude">
+                  <h6 class="q-ma-none q-mb-md text-grey-8">Approximate Location:
+                    {{ response.listing.location }}</h6>
                   <ListingLocationMap
-                    :latitude="listing.latitude"
-                    :longitude="listing.longitude"
-                    :location="listing.location"
+                    :latitude="response.listing.latitude"
+                    :longitude="response.listing.longitude"
+                    :location="response.listing.location"
                     :zoom="11"
                   />
                 </q-card-section>
 
                 <!-- Additional Info Section -->
                 <q-card-section>
-                  <div class="text-body2 text-grey-7 q-mb-xs">Views: {{ listing.views }}</div>
-                  <div class="text-body2 text-grey-7 q-mb-xs">Created: {{ formatDate(listing.created_at) }}</div>
-                  <div class="text-body2 text-grey-7">Last Updated: {{ formatDate(listing.updated_at) }}</div>
+                  <div class="text-body2 text-grey-7 q-mb-xs">Views: {{ response.listing.views }}</div>
+                  <div class="text-body2 text-grey-7 q-mb-xs">Created:
+                    {{ formatDate(response.listing.created_at) }}</div>
+                  <div class="text-body2 text-grey-7">Last Updated:
+                    {{ formatDate(response.listing.updated_at) }}</div>
                 </q-card-section>
 
               </q-card>
@@ -163,7 +170,7 @@ export default {
   },
   data() {
     return {
-      listing: null,
+      response: null,
       loading: true,
       error: null,
       currentSlide: 0,
@@ -189,7 +196,7 @@ export default {
         this.error = null
 
         const res = await api.get(`listings/${this.listingId}`)
-        this.listing = res.data
+        this.response = res.data
       } catch (e) {
         console.error("Error fetching listing:", e)
         if (e.response?.status === 404) {
@@ -210,18 +217,16 @@ export default {
     goToAccount() {
       this.$router.push('/account')
     },
-    messageSeller() {
-      if (!this.listing) return
-
+    messageSeller(listing) {
       // Set up dialog data and show it
       this.selectedSeller = {
-        name: this.listing.seller_name,
-        email: this.listing.seller_email
+        name: `${listing.seller.fname} ${listing.seller.lname}`,
+        email: listing.seller.email
       }
       this.selectedListing = {
-        title: this.listing.title,
-        price: this.listing.price,
-        currency: this.listing.currency
+        title: listing.listing.title,
+        price: listing.listing.price,
+        currency: listing.listing.currency
       }
       this.showMessageDialog = true
     },
