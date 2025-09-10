@@ -5,7 +5,7 @@ FROM node:18-alpine AS frontend-build
 # Build frontend - copy everything first, then build
 WORKDIR /app
 COPY package*.json ./
-COPY quasar.config.js ./
+COPY frontend/quasar.config.js ./
 COPY . .
 RUN npm install
 RUN npm run build
@@ -16,7 +16,7 @@ FROM python:3.11-slim AS backend-base
 WORKDIR /app
 
 # Install Python dependencies
-COPY requirements.txt .
+COPY api/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code
