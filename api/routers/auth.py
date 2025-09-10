@@ -44,7 +44,7 @@ class VerifyEmail(BaseModel):
     code: str
 
 
-class ResendCode(BaseModel):
+class Email(BaseModel):
     email: str
 
 
@@ -107,6 +107,11 @@ def send_verification_email(email: str, code: str, fname: str):
     email_service = get_email_service()
     email_service.send_verification_email(email, code, fname)
 
+def send_password_reset_email(email: str):
+    """Send verification code via MailerSend API"""
+    email_service = get_email_service()
+    email_service.send_password_reset_email(email)
+
 def store_verification_code(user_id, code: str, db: Session):
     """Store verification code in database"""
     expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=10)
@@ -127,8 +132,6 @@ def store_verification_code(user_id, code: str, db: Session):
             expires_at=expires_at
         )
         db.add(verification_code)
-    
-    db.commit()
 
 
 @router.post('/login')
@@ -177,30 +180,22 @@ def login(login: Login, response: Response, db: Session = Depends(get_db)):
             headers = {"X-Verification-Email": user.email}
         )
 
-    # If user is verified, create JWT token and set HTTP-only cookie
-    token = create_jwt_token(user.id, user.email)
-    
-    # Set HTTP-only cookie with secure flags (secure=False for development)
-    is_production = os.getenv("NODE_ENV") == "production"
-    response.set_cookie(
-        key="auth_token",
-        value=token,
-        max_age=7 * 24 * 60 * 60,  # 7 days in seconds
-        httponly=True,
-        secure=is_production,  # Only secure in production (HTTPS)
-        samesite="lax"
-    )
-    
-    return {
-        "success": True,
-        "user": {
-            "id": str(user.id),
-            "email": user.email,
-            "firstName": user.fname,
-            "lastName": user.lname
-        }
-    }
+    return _create_and_set_cookie(response, user)
 
+@router.post('/forgot-password')
+def forgot_password(email: Email, db: Session = Depends(get_db)):
+    user = db.query(Users).filter(Users.email == email.email).first()
+    if not user:
+        raise HTTPException(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            detail = "Could not find a user with that email."
+        )
+
+    send_password_reset_email(email.email)
+
+    return {
+        "message": "We sent you a link in your email to reset your password."
+    }
 
 @router.post('/register')
 def register(register: Register, db: Session = Depends(get_db)):
@@ -215,29 +210,50 @@ def register(register: Register, db: Session = Depends(get_db)):
     # Hash password
     hashed_password = hash_password(register.password)
 
-    # Create new user
-    new_user = Users(
-        fname=register.fname,
-        lname=register.lname,
-        email=register.email,
-        password=hashed_password,
-        created_at=datetime.datetime.now(datetime.timezone.utc)
-    )
-    
-    db.add(new_user)
-    db.flush()  # Flush to get the ID without committing
+    try:
+        # Create new user
+        new_user = Users(
+            fname=register.fname,
+            lname=register.lname,
+            email=register.email,
+            password=hashed_password,
+            created_at=datetime.datetime.now(datetime.timezone.utc)
+        )
+        
+        db.add(new_user)
+        db.flush()  # Flush to get the ID without committing
 
-    # Generate and store verification code
-    verification_code = generate_verification_code()
-    store_verification_code(new_user.id, verification_code, db)
+        # Generate and store verification code (don't commit yet)
+        verification_code = generate_verification_code()
+        store_verification_code(new_user.id, verification_code, db)
 
-    # Send verification email
-    send_verification_email(new_user.email, verification_code, register.fname)
+        # Send verification email - if this fails, transaction will be rolled back
+        send_verification_email(new_user.email, verification_code, register.fname)
 
-    return {
-        "message": "Registration successful. Please check your email for verification code.",
-        "email": new_user.email
-    }
+        # Only commit if email was sent successfully
+        db.commit()
+
+        return {
+            "message": "Registration successful. Please check your email for verification code.",
+            "email": new_user.email
+        }
+        
+    except Exception as e:
+        # Roll back the transaction if anything fails
+        db.rollback()
+        
+        # Check if it's an email service error
+        if "email" in str(e).lower() or "mail" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Registration failed: Unable to send verification email. Please try again later."
+            )
+        else:
+            # Re-raise other exceptions as HTTP errors
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Registration failed: {str(e)}"
+            )
 
 
 @router.post('/verify-email')
@@ -276,35 +292,13 @@ def verify_email(verify: VerifyEmail, response: Response, db: Session = Depends(
     db.commit()
 
     # Create JWT token and set HTTP-only cookie
-    token = create_jwt_token(user.id, verify.email)
-    
-    # Set HTTP-only cookie with secure flags (secure=False for development)
-    is_production = os.getenv("NODE_ENV") == "production"
-    response.set_cookie(
-        key="auth_token",
-        value=token,
-        max_age=7 * 24 * 60 * 60,  # 7 days in seconds
-        httponly=True,
-        secure=is_production,  # Only secure in production (HTTPS)
-        samesite="lax"
-    )
-
-    return {
-        "success": True,
-        "message": "Email verified successfully",
-        "user": {
-            "id": str(user.id),
-            "email": verify.email,
-            "firstName": user.fname,
-            "lastName": user.lname
-        }
-    }
+    return _create_and_set_cookie(response, user)
 
 
 @router.post('/resend-verification')
-def resend_verification(resend: ResendCode, db: Session = Depends(get_db)):
+def resend_verification(email: Email, db: Session = Depends(get_db)):
     # Find user by email
-    user = db.query(Users).filter(Users.email == resend.email).first()
+    user = db.query(Users).filter(Users.email == email.email).first()
 
     if not user:
         raise HTTPException(
@@ -323,7 +317,7 @@ def resend_verification(resend: ResendCode, db: Session = Depends(get_db)):
     store_verification_code(user.id, verification_code, db)
 
     # Send verification email
-    send_verification_email(resend.email, verification_code, user.fname)
+    send_verification_email(email.email, verification_code, user.fname)
 
     return {
         "message": "Verification code sent successfully"
@@ -345,12 +339,7 @@ def validate_token(token_data: dict = Depends(verify_jwt_token), db: Session = D
 
     return {
         "success": True,
-        "user": {
-            "id": str(user.id),
-            "email": user.email,
-            "firstName": user.fname,
-            "lastName": user.lname
-        }
+        "user": user
     }
 
 
@@ -414,29 +403,8 @@ def google_signin(google_auth: GoogleAuth, response: Response, db: Session = Dep
                 existing_user.email_verified = True
                 db.commit()
 
-            # Create JWT token and set HTTP-only cookie for existing user
-            token = create_jwt_token(existing_user.id, existing_user.email)
-            
-            # Set HTTP-only cookie with secure flags (secure=False for development)
-            is_production = os.getenv("NODE_ENV") == "production"
-            response.set_cookie(
-                key="auth_token",
-                value=token,
-                max_age=7 * 24 * 60 * 60,  # 7 days in seconds
-                httponly=True,
-                secure=is_production,  # Only secure in production (HTTPS)
-                samesite="lax"
-            )
-            
-            return {
-                "success": True,
-                "user": {
-                    "id": str(existing_user.id),
-                    "email": existing_user.email,
-                    "firstName": existing_user.fname,
-                    "lastName": existing_user.lname
-                }
-            }
+            return _create_and_set_cookie(response, existing_user)
+
         else:
             # Create new user account
             new_user = Users(
@@ -452,29 +420,7 @@ def google_signin(google_auth: GoogleAuth, response: Response, db: Session = Dep
             db.commit()
             db.refresh(new_user)
 
-            # Create JWT token and set HTTP-only cookie for new user
-            token = create_jwt_token(new_user.id, new_user.email)
-            
-            # Set HTTP-only cookie with secure flags (secure=False for development)
-            is_production = os.getenv("NODE_ENV") == "production"
-            response.set_cookie(
-                key="auth_token",
-                value=token,
-                max_age=7 * 24 * 60 * 60,  # 7 days in seconds
-                httponly=True,
-                secure=is_production,  # Only secure in production (HTTPS)
-                samesite="lax"
-            )
-            
-            return {
-                "success": True,
-                "user": {
-                    "id": str(new_user.id),
-                    "email": new_user.email,
-                    "firstName": new_user.fname,
-                    "lastName": new_user.lname
-                }
-            }
+            return _create_and_set_cookie(response, new_user)
 
     except HTTPException:
         # Re-raise HTTP exceptions
@@ -485,3 +431,23 @@ def google_signin(google_auth: GoogleAuth, response: Response, db: Session = Dep
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail = f"Google authentication failed: {str(e)}"
         )
+
+def _create_and_set_cookie(response: Response, user: Users):
+    # If user is verified, create JWT token and set HTTP-only cookie
+    token = create_jwt_token(user.id, user.email)
+
+    # Set HTTP-only cookie with secure flags (secure=False for development)
+    is_production = os.getenv("NODE_ENV") == "production"
+    response.set_cookie(
+        key = "auth_token",
+        value = token,
+        max_age = 7 * 24 * 60 * 60,  # 7 days in seconds
+        httponly = True,
+        secure = is_production,  # Only secure in production (HTTPS)
+        samesite = "lax"
+    )
+
+    return {
+        "success": True,
+        "user": user
+    }
