@@ -1,43 +1,25 @@
-# Quasar App (quasar-project)
+# Marketplace Mobile / Unimarket
 
-A Quasar Project
+## Development Setup
 
-## Install the dependencies
+### Backend
 
-```bash
-yarn
-# or
+From root, create Python venv and activate, then run:
+
+```sh
+pip install -r requirements.txt
+uvicorn api.main:app --reload -port 8000
+```
+
+### Frontend
+
+From root, run:
+
+```sh
 npm install
+npm run dev
 ```
 
-### Start the app in development mode (hot-code reloading, error reporting, etc.)
+## Production Setup
 
-```bash
-quasar dev
-```
-
-### Lint the files
-
-```bash
-yarn lint
-# or
-npm run lint
-```
-
-### Format the files
-
-```bash
-yarn format
-# or
-npm run format
-```
-
-### Build the app for production
-
-```bash
-quasar build
-```
-
-### Customize the configuration
-
-See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
+?

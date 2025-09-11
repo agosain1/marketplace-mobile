@@ -1,0 +1,27 @@
+// src/css/quasar.variables.scss
+
+// site theme colors -- built only for light mode, may add dark mode later
+$primary: #99c4a8;
+$secondary: #fafff1;
+$accent: #006f20;
+
+// site typography colors -- quasar defaults text to black/white, which is fine for now
+$footer: #868686;
+
+// need further customization for all below (these are quasar defaults)
+$dark: #1d1d1d;
+$dark-page: #121212;
+
+$positive: #21ba45;
+$negative: #c10015;
+$info: #31ccec;
+$warning: #f2c037;
+
+@font-face {
+  font-family: work-sans;
+  src: url(./fonts/WorkSans-VariableFont_wght.ttf);
+}
+
+body {
+  font-family: work-sans, sans-serif;
+}
