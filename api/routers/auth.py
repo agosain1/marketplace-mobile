@@ -13,9 +13,9 @@ from google.oauth2 import id_token
 
 load_dotenv()
 
-from api.database import get_db
-from api.models import Users, VerificationCodes
-from api.services.email_service import get_email_service
+from db.database import get_db
+from models import Users, VerificationCodes
+from services.email_service import get_email_service
 from sqlalchemy.orm import Session
 
 router = APIRouter(

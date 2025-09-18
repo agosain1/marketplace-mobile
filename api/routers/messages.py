@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from api.routers.auth import verify_jwt_token
-from api.database import get_db
-from api.services.messaging_service import (
+from routers.auth import verify_jwt_token
+from db.database import get_db
+from services.messaging_service import (
     send_message,
     get_user_messages,
     get_conversation,

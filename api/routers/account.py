@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from api.models import Users, Listings, Messages
+from models import Users, Listings, Messages
 from .auth import verify_jwt_token
 from sqlalchemy.orm import Session
-from api.database import get_db
+from db.database import get_db
 from pydantic import BaseModel
 
 

@@ -14,7 +14,7 @@ load_dotenv()
 MAPBOX_TOKEN = os.getenv("MAPBOX_ACCESS_TOKEN")
 
 import requests
-from api.models import UsZipcodes
+from models import UsZipcodes
 from sqlalchemy.orm import Session
 
 def get_location_from_coords(lat, lon):

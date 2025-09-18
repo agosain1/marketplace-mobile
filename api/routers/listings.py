@@ -1,13 +1,13 @@
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, UploadFile, File, Form
-from api.database import get_db
-from api.models import Users, Listings
+from db.database import get_db
+from models import Users, Listings
 from sqlalchemy.orm import Session, Query
 from sqlalchemy import or_
 from .auth import verify_jwt_token
 from fastapi import HTTPException, status
-from api.services.s3_service import get_s3_service
-from api.services.location_service import (get_location_from_coords,
+from services.s3_service import get_s3_service
+from services.location_service import (get_location_from_coords,
                                            search_location, search_location_suggestions,
                                            get_bounding_box_corners, generate_coord_offset)
 from typing import List, Optional

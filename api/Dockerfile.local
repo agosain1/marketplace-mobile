@@ -25,14 +25,14 @@ ENV PYTHONPATH=/app
 COPY .env* ./
 
 # Copy startup scripts
-COPY start.sh ./
-RUN chmod +x start.sh
+#COPY start.sh ./
+#RUN chmod +x start.sh
 
 # Copy API application code
-COPY api/ ./api/
+COPY . .
 
 # Expose port 8000 for local development
 EXPOSE 8000
 
 # Command to run the application on localhost:8000
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

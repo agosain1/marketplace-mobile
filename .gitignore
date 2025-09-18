@@ -61,7 +61,7 @@ railway-deploy.sh
 
 # Keep these Railway config files for GitHub deployment:
 # railway.json - Main config
-# railway-backend.json - Backend service config  
+# railway.json - Backend service config
 # railway.json - Frontend service config
 # nixpacks.toml - Prevents auto-detection issues
 
