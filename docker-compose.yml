@@ -23,12 +23,12 @@ services:
   # Frontend
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: /frontend
+      dockerfile: Dockerfile
     container_name: marketplace-frontend
     restart: unless-stopped
     env_file:
-      - frontend/.env
+      - .env
     ports:
       - "3000:80"
     depends_on:
