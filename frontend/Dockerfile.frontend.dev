@@ -1,5 +1,5 @@
 # Local development Dockerfile for Docker Desktop
-# Build: docker build -f Dockerfile.frontend.dev -t marketplace-frontend-local .
+# Build from frontend directory: docker build -f Dockerfile.frontend.dev -t marketplace-frontend-local .
 # Run: docker run -p 3000:3000 --env-file .env marketplace-frontend-local
 
 # Development stage
@@ -13,11 +13,11 @@ COPY package*.json ./
 COPY quasar.config.js ./
 COPY index.html ./
 
-# Install dependencies
-RUN npm ci
-
-# Copy source code
+# Copy source code first (needed for scripts)
 COPY . .
+
+# Install dependencies
+RUN sed -i 's|../node_modules/.bin/|./node_modules/.bin/|g' package.json && npm ci
 
 # Expose port for development server
 EXPOSE 3000

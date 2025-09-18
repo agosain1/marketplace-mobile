@@ -14,11 +14,11 @@ COPY package*.json ./
 COPY quasar.config.js ./
 COPY index.html ./
 
-# Install dependencies
-RUN npm ci
-
 # Copy source code
 COPY . .
+
+# Install dependencies
+RUN sed -i 's|../node_modules/.bin/|./node_modules/.bin/|g' package.json && npm ci
 
 # Set environment variable for build
 ENV VITE_API_URL=$VITE_API_URL

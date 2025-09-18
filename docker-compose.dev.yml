@@ -20,7 +20,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.frontend.dev
+      dockerfile: frontend/Dockerfile.frontend.dev
     container_name: marketplace-frontend-dev
     restart: unless-stopped
     env_file:
