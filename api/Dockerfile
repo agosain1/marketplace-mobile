@@ -35,7 +35,7 @@ COPY railway-start.sh ./
 RUN chmod +x start.sh railway-start.sh
 
 # Copy API application code
-COPY api/ ./api/
+COPY . .
 
 # Expose port
 EXPOSE 8000
