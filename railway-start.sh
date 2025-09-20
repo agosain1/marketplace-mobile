@@ -17,16 +17,22 @@ fi
 API_PORT=${PORT:-8000}
 echo "Starting FastAPI on port: $API_PORT"
 
+# Determine the app module path based on file layout
+APP_MODULE="api.main:app"
+if [ -f "./main.py" ]; then
+  APP_MODULE="main:app"
+fi
+
 # Start the application with Railway's dynamic port
 if [ "$ENVIRONMENT" = "development" ]; then
     echo "Running in development mode with auto-reload"
-    exec uvicorn api.main:app \
+    exec uvicorn "$APP_MODULE" \
         --host 0.0.0.0 \
         --port "$API_PORT" \
         --reload
 else
     echo "Running in production mode"
-    exec uvicorn api.main:app \
+    exec uvicorn "$APP_MODULE" \
         --host 0.0.0.0 \
         --port "$API_PORT" \
         --log-level info \

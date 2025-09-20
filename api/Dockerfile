@@ -20,22 +20,28 @@ RUN apt-get update --fix-missing && \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Copy requirements and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy project files into the image (works for both root and api build contexts)
+COPY . .
+
+# Install Python dependencies from whichever requirements file exists
+RUN bash -lc ' \
+    if [ -f requirements.txt ]; then \
+        echo "Installing deps from ./requirements.txt"; \
+        pip install --no-cache-dir -r requirements.txt; \
+    elif [ -f api/requirements.txt ]; then \
+        echo "Installing deps from ./api/requirements.txt"; \
+        pip install --no-cache-dir -r api/requirements.txt; \
+    else \
+        echo "ERROR: requirements.txt not found in build context" >&2; \
+        ls -la; \
+        exit 1; \
+    fi'
 
 ENV PYTHONPATH=/app
 
-# Copy .env file if it exists (optional)
-COPY .env* ./
-
-# Copy startup scripts
-COPY start.sh ./
-COPY railway-start.sh ./
-RUN chmod +x start.sh railway-start.sh
-
-# Copy API application code
-COPY . .
+# Ensure startup scripts are executable (support both possible locations)
+RUN chmod +x railway-start.sh 2>/dev/null || true && \
+    chmod +x api/railway-start.sh 2>/dev/null || true
 
 # Expose port
 EXPOSE 8000
