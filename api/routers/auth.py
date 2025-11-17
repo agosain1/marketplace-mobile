@@ -444,7 +444,7 @@ def _create_and_set_cookie(response: Response, user: Users):
         max_age = 7 * 24 * 60 * 60,  # 7 days in seconds
         httponly = True,
         secure = is_production,  # Only secure in production (HTTPS)
-        samesite = "lax"
+        samesite = "none"
     )
 
     return {
