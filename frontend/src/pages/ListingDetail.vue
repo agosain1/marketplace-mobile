@@ -136,6 +136,8 @@
                     {{ formatDate(response.listing.created_at) }}</div>
                   <div class="text-body2 text-grey-7">Last Updated:
                     {{ formatDate(response.listing.updated_at) }}</div>
+                  <div class="text-body2 text-grey-7">Tags:
+                    {{ response.listing.tags }}</div>
                 </q-card-section>
 
               </q-card>

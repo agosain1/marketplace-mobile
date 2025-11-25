@@ -82,6 +82,7 @@ class Listings(Base):
     latitude: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 8))
     longitude: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(11, 8))
     location: Mapped[Optional[str]] = mapped_column(Text)
+    tags: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text()))
 
     seller: Mapped[Optional['Users']] = relationship('Users', back_populates='listings')
 
@@ -111,7 +112,7 @@ class Messages(Base):
     sender: Mapped['Users'] = relationship('Users', foreign_keys=[sender_id], back_populates='messages_')
 
 
-class VerificationCodes(Base):
+class VerificationCodes(Users):
     __tablename__ = 'verification_codes'
     __table_args__ = (
         ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE', name='verification_codes_user_id_fkey'),
