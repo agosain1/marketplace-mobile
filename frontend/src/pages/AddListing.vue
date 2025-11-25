@@ -51,6 +51,23 @@
         error-message="Category is required"
         @update:model-value="clearFieldError('category')"
       />
+      <!-- Tags Input -->
+      <q-select
+        v-model="tags"
+        label="Tags (optional)"
+        filled
+        multiple
+        use-input
+        use-chips
+        input-debounce="0"
+        new-value-mode="add-unique"
+        hint="Press Enter to add tags"
+        @new-value="createTag"
+      >
+        <template v-slot:hint>
+          <div class="text-caption">Add tags like "electronics", "vintage", "negotiable"</div>
+        </template>
+      </q-select>
       <!-- Location Section -->
       <div class="q-mb-md">
         <q-label class="q-mb-sm">Location</q-label>
@@ -249,6 +266,7 @@ const title = ref("")
 const description = ref("")
 const price = ref(null)
 const category = ref("")
+const tags = ref([])
 const location = ref("")
 const condition = ref("")
 const images = ref(null)
@@ -338,6 +356,14 @@ function removeImage(index) {
   }
 }
 
+function createTag(val, done) {
+  // Clean and validate the tag
+  const tag = val.trim().toLowerCase()
+  if (tag.length > 0 && tag.length <= 30) {
+    done(tag, 'add-unique')
+  }
+}
+
 function validateFields() {
   validationErrors.value = {}
 
@@ -380,6 +406,11 @@ async function addListing() {
     formData.append('category', category.value)
     formData.append('condition', condition.value)
 
+    // Add tags if any
+    if (tags.value && tags.value.length > 0) {
+      formData.append('tags', JSON.stringify(tags.value))
+    }
+
     // Add GPS coordinates
     formData.append('latitude', latitude.value.toString())
     formData.append('longitude', longitude.value.toString())
@@ -406,6 +437,7 @@ async function addListing() {
     description.value = ""
     price.value = null
     category.value = ""
+    tags.value = []
     location.value = ""
     condition.value = ""
     images.value = null
