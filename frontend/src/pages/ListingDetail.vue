@@ -131,7 +131,7 @@
 
                 <!-- Additional Info Section -->
                 <q-card-section>
-                  <div class="text-body2 text-grey-7 q-mb-xs">Views: {{ response.listing.views }}</div>
+                  <div class="text-body2 text-grey-7 q-mb-xs">Views: {{ formatViews(response.listing.views) }}</div>
                   <div class="text-body2 text-grey-7 q-mb-xs">Created:
                     {{ formatDate(response.listing.created_at) }}</div>
                   <div class="text-body2 text-grey-7">Last Updated:
@@ -268,6 +268,12 @@ export default {
         console.error("Error getting current user:", e)
         this.currentUserEmail = null
       }
+    },
+    formatViews(views) {
+      if (views >= 100) {
+        return '100+'
+      }
+      return views || 0
     },
     formatDate,
   },
