@@ -24,7 +24,7 @@ def delete_account(token_data: dict = Depends(verify_jwt_token), db: Session = D
     # Import S3 service here to avoid circular imports
     s3_service = None
     try:
-        from api.services.s3_service import get_s3_service
+        from services.s3_service import get_s3_service
         s3_service = get_s3_service()
         s3_available = True
     except ImportError:
@@ -132,9 +132,9 @@ async def upload_pfp(
         )
     
     try:
-        from api.services.s3_service import get_s3_service
+        from services.s3_service import get_s3_service
         s3_service = get_s3_service()
-        
+
         # Delete old profile picture if it exists
         if user.pfp_url and isinstance(user.pfp_url, list) and len(user.pfp_url) > 0:
             old_image_url = user.pfp_url[0]
@@ -155,7 +155,7 @@ async def upload_pfp(
         
         return {
             "message": "Profile picture updated successfully",
-            "pfp_url": image_url
+            "pfp_url": [image_url]  # Return as array for consistency
         }
         
     except ImportError:
