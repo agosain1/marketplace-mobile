@@ -189,6 +189,7 @@ export default {
       profile: null,
       editMode: false,
       loading: false,
+      loadingProfile: false,
       errorMessage: '',
       uploadingImage: false,
       editForm: {
@@ -212,8 +213,21 @@ export default {
     async loadProfile() {
       if (!this.user) return
 
+      this.loadingProfile = true
+      this.errorMessage = ''
+
+      // Create abort controller for timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => {
+        controller.abort()
+      }, 10000) // 10 second timeout
+
       try {
-        const response = await api.get(`account/profile`)
+        const response = await api.get(`account/profile`, {
+          signal: controller.signal
+        })
+        clearTimeout(timeoutId)
+
         this.profile = response.data.user
         console.log(this.profile)
         this.profile.isGoogleUser = this.profile.google_id !== null
@@ -221,12 +235,19 @@ export default {
           this.profile.pfp_url = 'https://toppng.com/uploads/preview/instagram-default-profile-picture-11562973083brycehrmyv.png' // DEFAULT URL
         }
       } catch (error) {
+        clearTimeout(timeoutId)
         console.error('Error loading profile:', error)
-        if (error.response?.status === 401) {
+
+        if (error.name === 'CanceledError' || error.code === 'ECONNABORTED') {
+          this.errorMessage = 'Profile loading timed out. Please check your connection and try again.'
+        } else if (error.response?.status === 401) {
           console.log('User not authenticated - clearing user data')
+          this.errorMessage = 'Session expired. Please login again.'
         } else {
-          this.errorMessage = 'Failed to load profile information'
+          this.errorMessage = error.response?.data?.detail || 'Failed to load profile information'
         }
+      } finally {
+        this.loadingProfile = false
       }
     },
 
