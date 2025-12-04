@@ -17,7 +17,7 @@
           <div class="text-h6 q-mb-md">Profile Information</div>
 
           <q-img
-                      :src="profile.pfp_url"
+                      :src="profile.pfp_url?.[0] || 'https://toppng.com/uploads/preview/instagram-default-profile-picture-11562973083brycehrmyv.png'"
                       :alt="`could not load pfp`"
                       fit="cover"
                       style="height: 30px; width: 10%;"
@@ -310,9 +310,9 @@ export default {
           }
         })
 
-        // Update profile with new image URL
+        // Update profile with new image URL (backend returns array)
         if (response.data.pfp_url) {
-          this.profile.pfp_url = response.data.pfp_url
+          this.profile.pfp_url = response.data.pfp_url  // Already an array from backend
           this.errorMessage = 'Profile picture updated successfully!'
 
           // Clear success message after 3 seconds

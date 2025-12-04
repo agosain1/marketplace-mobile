@@ -155,7 +155,7 @@ async def upload_pfp(
         
         return {
             "message": "Profile picture updated successfully",
-            "pfp_url": image_url
+            "pfp_url": [image_url]  # Return as array for consistency
         }
         
     except ImportError:
