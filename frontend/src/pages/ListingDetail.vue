@@ -100,6 +100,23 @@
                       <div class="text-body2 text-grey-7 q-mb-xs">Category: {{ response.listing.category }}</div>
                       <div class="text-body2 text-grey-7 q-mb-sm">Condition: {{ response.listing.condition
                         }}</div>
+                      <!-- Tags Display -->
+                      <div v-if="response.listing.tags && response.listing.tags.length > 0" class="q-mb-md">
+                        <div class="text-body2 text-grey-7 q-mb-xs">Tags:</div>
+                        <div class="row q-gutter-xs">
+                          <q-chip
+                            v-for="tag in response.listing.tags"
+                            :key="tag"
+                            dense
+                            color="blue-1"
+                            text-color="blue-9"
+                            icon="label"
+                            size="sm"
+                          >
+                            {{ tag }}
+                          </q-chip>
+                        </div>
+                      </div>
                       <div class="text-blue-7 text-h6 q-mb-xs">Description</div>
                       <div class="text-wrap text-black text-body1 q-mb-md">{{ response.listing.description
                         }}</div>
