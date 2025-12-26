@@ -138,7 +138,10 @@ def get_listings(user_id: Optional[str] = None,
                  lat: Optional[float] = None,
                  lon: Optional[float] = None,
                  dist: Optional[float] = None,
-                 org_filter: Optional[bool] = False
+                 org_filter: Optional[bool] = False,
+                 email_filter: Optional[str] = None,
+                 category: Optional[str] = None,
+                 condition: Optional[str] = None
                  ):
     # Query listings with seller information using SQLAlchemy relationships
     query = (
@@ -147,7 +150,7 @@ def get_listings(user_id: Optional[str] = None,
         .order_by(Listings.created_at.desc())
     )
 
-    query = apply_filters(user_id, query, lat, lon, dist, org_filter)
+    query = apply_filters(user_id, query, lat, lon, dist, org_filter, db, email_filter, category, condition)
 
     listings = query.all()
 
@@ -165,14 +168,17 @@ def search_listing(q: str, user_id: Optional[str] = None, db: Session = Depends(
                     lat: Optional[float] = None,
                  lon: Optional[float] = None,
                  dist: Optional[float] = None,
-                   org_filter: Optional[bool] = False):
+                   org_filter: Optional[bool] = False,
+                   email_filter: Optional[str] = None,
+                   category: Optional[str] = None,
+                   condition: Optional[str] = None):
     query = (
         db.query(Listings)
         .join(Users, Listings.seller_id == Users.id)
         .order_by(Listings.created_at.desc())
     )
 
-    query = apply_filters(user_id, query, lat, lon, dist, org_filter)
+    query = apply_filters(user_id, query, lat, lon, dist, org_filter, db, email_filter, category, condition)
 
     if q:
         query = query.filter(
@@ -310,7 +316,10 @@ def filter_by_location(query: Query[Listing], lat: Optional[float] = None,
 
     return query
 
-def apply_filters(user_id: str, query: Query[Listing], lat, lon, dist, org_filter, db = Depends(get_db)):
+def apply_filters(user_id: str, query: Query[Listing], lat, lon, dist, org_filter, db,
+                  email_filter: Optional[str] = None,
+                  category: Optional[str] = None,
+                  condition: Optional[str] = None):
     if org_filter:
         # get caller's email
         asker = db.query(Users).filter(Users.id == user_id).first()
@@ -318,6 +327,19 @@ def apply_filters(user_id: str, query: Query[Listing], lat, lon, dist, org_filte
             email = asker.email
             org = email.split('@')[-1]
             query = query.filter(Users.email.ilike(f"%@{org}"))
+
+    # Email filter - search by seller's email (can be partial match)
+    if email_filter:
+        query = query.filter(Users.email.ilike(f"%{email_filter}%"))
+
+    # Category filter - exact or partial match
+    if category:
+        query = query.filter(Listings.category.ilike(f"%{category}%"))
+
+    # Condition filter - exact match (new/used/refurbished)
+    if condition:
+        query = query.filter(Listings.condition == condition)
+
     if user_id:
         query = query.filter(Listings.seller_id != user_id)
 
