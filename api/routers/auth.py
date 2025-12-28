@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException, status, Depends, Response, Request
 import bcrypt
-import jwt
+from jose import jwt
 import datetime
 from dotenv import load_dotenv
 import os
