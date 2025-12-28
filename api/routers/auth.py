@@ -337,9 +337,17 @@ def validate_token(token_data: dict = Depends(verify_jwt_token), db: Session = D
             detail="User not found"
         )
 
+    user_info = {
+        "id": user.id,
+        "email": user.email,
+        "fname": user.fname,
+        "lname": user.lname,
+        "pfp_url": user.pfp_url,
+    }
+
     return {
         "success": True,
-        "user": user
+        "user": user_info
     }
 
 
@@ -448,7 +456,15 @@ def _create_and_set_cookie(response: Response, user: Users):
         samesite = "lax"
     )
 
+    user_info = {
+        "id": user.id,
+        "email": user.email,
+        "fname": user.fname,
+        "lname": user.lname,
+        "pfp_url": user.pfp_url,
+    }
+
     return {
         "success": True,
-        "user": user
+        "user": user_info
     }
