@@ -159,9 +159,9 @@
 
       <q-card-actions align="right">
         <q-btn flat label="Cancel" @click="showForgotPasswordDialog = false" />
-        <q-btn 
-          color="primary" 
-          label="Send Reset Link" 
+        <q-btn
+          color="primary"
+          label="Send Reset Link"
           @click="sendPasswordReset"
           :loading="resetLoading"
         />
@@ -202,7 +202,7 @@ export default {
   computed: {
     passwordValidationRules() {
       const basicRules = [val => !!val || 'Password is required']
-      
+
       // Only add complexity rules during registration
       if (!this.isLogin) {
         basicRules.push(
@@ -213,7 +213,7 @@ export default {
           val => this.hasSpecialCharacter(val) || 'Password must contain at least one special character'
         )
       }
-      
+
       return basicRules
     }
   },
