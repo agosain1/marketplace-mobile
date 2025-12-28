@@ -16,23 +16,27 @@
           <!-- Profile Section -->
           <div class="text-h6 q-mb-md">Profile Information</div>
 
-          <q-img
-                      :src="profile.pfp_url?.[0] || 'https://toppng.com/uploads/preview/instagram-default-profile-picture-11562973083brycehrmyv.png'"
-                      :alt="`could not load pfp`"
-                      fit="cover"
-                      style="height: 30px; width: 10%;"
-                      class="rounded-borders"
-                    />
+          <q-avatar size="50px">
+             <q-img
+                :src="profile.pfp_url?.[0] || 'https://toppng.com/uploads/preview/instagram-default-profile-picture-11562973083brycehrmyv.png'"
+                :alt="`could not load pfp`"
+                fit="cover"
+                style="height: 100%; width: 100%;"
+              />
+          </q-avatar>
 
           <!-- Image Upload Button -->
           <q-btn
-            label="Upload Profile Picture"
-            color="primary"
-            icon="upload"
-            @click="triggerFileUpload"
-            :loading="uploadingImage"
-            class="q-mb-md"
-          />
+                flat
+                dense
+                round
+                icon="upload"
+                size="sm"
+                class="q-ml-sm"
+                @click="triggerFileUpload"
+                :loading="uploadingImage"
+                color="primary"
+              />
           <input
             ref="fileInput"
             type="file"
@@ -40,8 +44,6 @@
             style="display: none"
             @change="handleImageUpload"
           />
-
-
 
           <div v-if="errorMessage" class="q-mb-md">
             <q-banner :class="errorMessage.includes('successfully') ? 'bg-positive text-white' : 'bg-negative text-white'">
