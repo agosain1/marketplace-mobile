@@ -12,27 +12,31 @@
         <q-card style="width: 100%; max-width: 500px;">
           <q-card-section>
 
-        <div v-if="user && profile" class="q-gutter-md">
+        <div v-if="isAuthenticated && profile" class="q-gutter-md">
           <!-- Profile Section -->
           <div class="text-h6 q-mb-md">Profile Information</div>
 
-          <q-img
-                      :src="profile.pfp_url"
-                      :alt="`could not load pfp`"
-                      fit="cover"
-                      style="height: 30px; width: 10%;"
-                      class="rounded-borders"
-                    />
+          <q-avatar size="50px">
+             <q-img
+                :src="profile.pfp_url?.[0] || 'https://toppng.com/uploads/preview/instagram-default-profile-picture-11562973083brycehrmyv.png'"
+                :alt="`could not load pfp`"
+                fit="cover"
+                style="height: 100%; width: 100%;"
+              />
+          </q-avatar>
 
           <!-- Image Upload Button -->
           <q-btn
-            label="Upload Profile Picture"
-            color="primary"
-            icon="upload"
-            @click="triggerFileUpload"
-            :loading="uploadingImage"
-            class="q-mb-md"
-          />
+                flat
+                dense
+                round
+                icon="upload"
+                size="sm"
+                class="q-ml-sm"
+                @click="triggerFileUpload"
+                :loading="uploadingImage"
+                color="primary"
+              />
           <input
             ref="fileInput"
             type="file"
@@ -40,8 +44,6 @@
             style="display: none"
             @change="handleImageUpload"
           />
-
-
 
           <div v-if="errorMessage" class="q-mb-md">
             <q-banner :class="errorMessage.includes('successfully') ? 'bg-positive text-white' : 'bg-negative text-white'">
@@ -148,7 +150,7 @@
           />
         </div>
 
-        <div v-else-if="!user" class="flex flex-center">
+        <div v-else-if="!isLoading && !isAuthenticated" class="flex flex-center">
           <q-card style="width: 100%; max-width: 400px;">
             <q-card-section class="text-center">
               <q-icon name="login" size="64px" color="primary" class="q-mb-md" />
@@ -179,13 +181,24 @@
 
 <script>
 import { api } from 'src/boot/axios'
+import { useAuth } from 'src/composables/useAuth'
 import { useAuthStore } from 'stores/authStore.js'
 
 export default {
   name: "AccountPage",
+  setup() {
+    const { user, isAuthenticated, isLoading } = useAuth()
+    const authStore = useAuthStore()
+
+    return {
+      user,
+      isAuthenticated,
+      isLoading,
+      authStore
+    }
+  },
   data() {
     return {
-      user: null,
       profile: null,
       editMode: false,
       loading: false,
@@ -198,16 +211,18 @@ export default {
     }
   },
   mounted() {
-    this.loadUser()
-    if (this.user) {
+    if (this.isAuthenticated) {
       this.loadProfile()
     }
   },
+  watch: {
+    isAuthenticated(newVal) {
+      if (newVal && !this.profile) {
+        this.loadProfile()
+      }
+    }
+  },
   methods: {
-    loadUser() {
-      const authStore = useAuthStore()
-      this.user = authStore.user
-    },
 
     async loadProfile() {
       if (!this.user) return
@@ -276,8 +291,7 @@ export default {
 
     async logout() {
       await api.post(`auth/logout`)
-      const authStore = useAuthStore()
-      authStore.clearAuth()
+      this.authStore.clearAuth()
       this.$router.push('/')
     },
 
@@ -310,9 +324,9 @@ export default {
           }
         })
 
-        // Update profile with new image URL
+        // Update profile with new image URL (backend returns array)
         if (response.data.pfp_url) {
-          this.profile.pfp_url = response.data.pfp_url
+          this.profile.pfp_url = response.data.pfp_url  // Already an array from backend
           this.errorMessage = 'Profile picture updated successfully!'
 
           // Clear success message after 3 seconds
@@ -342,8 +356,7 @@ export default {
         await api.delete(`account/delete-account`)
 
         alert('Your account has been successfully deleted.')
-        const authStore = useAuthStore()
-        authStore.clearAuth()
+        this.authStore.clearAuth()
         this.$router.push('/')
 
       } catch (e) {

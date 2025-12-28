@@ -38,21 +38,22 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     // Import the useAuth composable dynamically to avoid circular imports
     const { useAuth } = await import('../composables/useAuth')
     const { validateToken, isAuthenticated } = useAuth()
-    
+
     // Define public routes (no authentication required)
-    const publicRoutes = ['/login', '/verify-email', '/', '/register']
-    
+    const publicRoutes = ['/', '/login', '/register']
+
     // Check if the route requires authentication
-    const requiresAuth = !publicRoutes.some(route => 
-      to.path === route || to.path.startsWith(route)
-    )
-    
-    if (requiresAuth) {
+    // Exact match for public routes, or starts with /verify-email or /listing/
+    const isPublicRoute = publicRoutes.includes(to.path) ||
+                          to.path.startsWith('/verify-email') ||
+                          to.path.startsWith('/listing/')
+
+    if (!isPublicRoute) {
       // Check if user is already authenticated
       if (!isAuthenticated.value) {
         // Try to validate token from HTTP-only cookie
         const isValid = await validateToken()
-        
+
         if (!isValid) {
           // Redirect to login with return URL
           next({
@@ -63,7 +64,7 @@ export default defineRouter(function (/* { store, ssrContext } */) {
         }
       }
     }
-    
+
     // If we get here, either route is public or user is authenticated
     next()
   })
