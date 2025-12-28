@@ -385,6 +385,7 @@ def google_signin(google_auth: GoogleAuth, response: Response, db: Session = Dep
             # Try to get name from token, fall back to profile data
             first_name = idinfo.get('given_name') or google_auth.profile.get('given_name', '')
             last_name = idinfo.get('family_name') or google_auth.profile.get('family_name', '')
+            picture = idinfo.get('picture') or google_auth.profile.get('picture')
 
         except ValueError as e:
             # Invalid token
@@ -413,7 +414,7 @@ def google_signin(google_auth: GoogleAuth, response: Response, db: Session = Dep
                 email=google_email,
                 google_id=google_sub,
                 email_verified=True,  # Google accounts are pre-verified
-                created_at=datetime.datetime.now(datetime.timezone.utc)
+                pfp_url=[picture]
             )
             
             db.add(new_user)
