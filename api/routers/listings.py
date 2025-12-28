@@ -138,7 +138,9 @@ def get_listings(user_id: Optional[str] = None,
                  lat: Optional[float] = None,
                  lon: Optional[float] = None,
                  dist: Optional[float] = None,
-                 org_filter: Optional[bool] = False
+                 org_filter: Optional[bool] = False,
+                 category: Optional[str] = None,
+                 condition: Optional[str] = None
                  ):
     # Query listings with seller information using SQLAlchemy relationships
     query = (
@@ -147,7 +149,7 @@ def get_listings(user_id: Optional[str] = None,
         .order_by(Listings.created_at.desc())
     )
 
-    query = apply_filters(user_id, query, lat, lon, dist, org_filter)
+    query = apply_filters(user_id, query, lat, lon, dist, org_filter, db, category, condition)
 
     listings = query.all()
 
@@ -165,14 +167,16 @@ def search_listing(q: str, user_id: Optional[str] = None, db: Session = Depends(
                     lat: Optional[float] = None,
                  lon: Optional[float] = None,
                  dist: Optional[float] = None,
-                   org_filter: Optional[bool] = False):
+                   org_filter: Optional[bool] = False,
+                   category: Optional[str] = None,
+                   condition: Optional[str] = None):
     query = (
         db.query(Listings)
         .join(Users, Listings.seller_id == Users.id)
         .order_by(Listings.created_at.desc())
     )
 
-    query = apply_filters(user_id, query, lat, lon, dist, org_filter)
+    query = apply_filters(user_id, query, lat, lon, dist, org_filter, db, category, condition)
 
     if q:
         query = query.filter(
@@ -210,20 +214,52 @@ def get_user_listings(user_id: str, db: Session = Depends(get_db)):
 def get_listing(listing_id: str, db: Session = Depends(get_db)):
     # Find the listing
     listing = db.query(Listings).filter(Listings.id == uuid.UUID(listing_id)).first()
-    
+
     if not listing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Listing not found"
         )
-    
+
     # Get seller information
     seller = db.query(Users).filter(Users.id == listing.seller_id).first()
-    
+
     # Format response
     result = format_listing(listing, seller)
-    
+
     return result
+
+class IncrementViewRequest(BaseModel):
+    user_id: Optional[str] = None
+
+@router.post("/{listing_id}/increment-view")
+def increment_listing_view(listing_id: str, request: IncrementViewRequest, db: Session = Depends(get_db)):
+    """
+    Increment the view count for a listing.
+    This is a public endpoint that doesn't require authentication.
+    If user_id is provided and matches the seller_id, the view won't be counted.
+    """
+    # Find the listing
+    listing = db.query(Listings).filter(Listings.id == uuid.UUID(listing_id)).first()
+
+    if not listing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Listing not found"
+        )
+
+    # Don't increment if the viewer is the seller
+    if request.user_id and str(listing.seller_id) == request.user_id:
+        return {"views": listing.views, "incremented": False}
+
+    # Increment views
+    listing.views = (listing.views or 0) + 1
+
+    # Save to database
+    db.commit()
+    db.refresh(listing)
+
+    return {"views": listing.views, "incremented": True}
 
 @router.delete("/{listing_id}")
 def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token), db: Session = Depends(get_db)):
@@ -310,7 +346,9 @@ def filter_by_location(query: Query[Listing], lat: Optional[float] = None,
 
     return query
 
-def apply_filters(user_id: str, query: Query[Listing], lat, lon, dist, org_filter, db = Depends(get_db)):
+def apply_filters(user_id: str, query: Query[Listing], lat, lon, dist, org_filter, db,
+                  category: Optional[str] = None,
+                  condition: Optional[str] = None):
     if org_filter:
         # get caller's email
         asker = db.query(Users).filter(Users.id == user_id).first()
@@ -318,6 +356,15 @@ def apply_filters(user_id: str, query: Query[Listing], lat, lon, dist, org_filte
             email = asker.email
             org = email.split('@')[-1]
             query = query.filter(Users.email.ilike(f"%@{org}"))
+
+    # Category filter - exact or partial match
+    if category:
+        query = query.filter(Listings.category.ilike(f"%{category}%"))
+
+    # Condition filter - exact match (new/used/refurbished)
+    if condition:
+        query = query.filter(Listings.condition == condition)
+
     if user_id:
         query = query.filter(Listings.seller_id != user_id)
 

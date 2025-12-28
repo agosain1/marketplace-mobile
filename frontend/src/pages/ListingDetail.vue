@@ -100,6 +100,23 @@
                       <div class="text-body2 text-grey-7 q-mb-xs">Category: {{ response.listing.category }}</div>
                       <div class="text-body2 text-grey-7 q-mb-sm">Condition: {{ response.listing.condition
                         }}</div>
+                      <!-- Tags Display -->
+                      <div v-if="response.listing.tags && response.listing.tags.length > 0" class="q-mb-md">
+                        <div class="text-body2 text-grey-7 q-mb-xs">Tags:</div>
+                        <div class="row q-gutter-xs">
+                          <q-chip
+                            v-for="tag in response.listing.tags"
+                            :key="tag"
+                            dense
+                            color="blue-1"
+                            text-color="blue-9"
+                            icon="label"
+                            size="sm"
+                          >
+                            {{ tag }}
+                          </q-chip>
+                        </div>
+                      </div>
                       <div class="text-blue-7 text-h6 q-mb-xs">Description</div>
                       <div class="text-wrap text-black text-body1 q-mb-md">{{ response.listing.description
                         }}</div>
@@ -131,7 +148,7 @@
 
                 <!-- Additional Info Section -->
                 <q-card-section>
-                  <div class="text-body2 text-grey-7 q-mb-xs">Views: {{ response.listing.views }}</div>
+                  <div class="text-body2 text-grey-7 q-mb-xs">Views: {{ formatViews(response.listing.views) }}</div>
                   <div class="text-body2 text-grey-7 q-mb-xs">Created:
                     {{ formatDate(response.listing.created_at) }}</div>
                   <div class="text-body2 text-grey-7">Last Updated:
@@ -199,6 +216,9 @@ export default {
 
         const res = await api.get(`listings/${this.listingId}`)
         this.response = res.data
+
+        // Increment view count (fire and forget - don't block page load)
+        this.incrementView()
       } catch (e) {
         console.error("Error fetching listing:", e)
         if (e.response?.status === 404) {
@@ -208,6 +228,24 @@ export default {
         }
       } finally {
         this.loading = false
+      }
+    },
+    async incrementView() {
+      try {
+        // Get current user ID if logged in
+        const authStore = useAuthStore()
+        const userId = authStore.user?.id || null
+
+        const res = await api.post(`listings/${this.listingId}/increment-view`, {
+          user_id: userId
+        })
+        // Update local view count with the server response
+        if (res.data.views && this.response) {
+          this.response.listing.views = res.data.views
+        }
+      } catch (e) {
+        // Silently fail - view tracking shouldn't break the page
+        console.error("Error incrementing view count:", e)
       }
     },
     goBack() {
@@ -249,6 +287,12 @@ export default {
         console.error("Error getting current user:", e)
         this.currentUserEmail = null
       }
+    },
+    formatViews(views) {
+      if (views >= 100) {
+        return '100+'
+      }
+      return views || 0
     },
     formatDate,
   },

@@ -71,14 +71,132 @@
                 />
               </template>
             </q-input>
-            <q-btn
-              v-if="isSearching"
-              flat
-              label="Show All Listings"
-              @click="clearSearch"
-              color="grey-6"
-              size="sm"
-            />
+            <div class="row q-gutter-sm q-mb-sm">
+              <q-btn
+                v-if="isSearching"
+                flat
+                label="Show All Listings"
+                @click="clearSearch"
+                color="grey-6"
+                size="sm"
+              />
+              <q-btn
+                flat
+                :label="showFilters ? 'Hide Filters' : 'Show Filters'"
+                @click="showFilters = !showFilters"
+                color="primary"
+                size="sm"
+                icon="filter_list"
+              />
+              <q-btn
+                v-if="hasActiveFilters"
+                flat
+                label="Clear Filters"
+                @click="clearFilters"
+                color="grey-6"
+                size="sm"
+                icon="clear"
+              />
+            </div>
+
+            <!-- Filters Panel -->
+            <q-slide-transition>
+              <div v-show="showFilters" class="q-pa-md bg-grey-2 rounded-borders">
+                <div class="text-subtitle2 q-mb-md">Filter Listings</div>
+                <div class="row q-col-gutter-md">
+                  <!-- Location Filter -->
+                  <div class="col-12 col-sm-6 col-md-4">
+                    <q-input
+                      v-model="filterLocation"
+                      label="Location"
+                      outlined
+                      dense
+                      clearable
+                      placeholder="Enter city or address"
+                      @update:model-value="onLocationInput"
+                    >
+                      <template v-slot:prepend>
+                        <q-icon name="place" />
+                      </template>
+                    </q-input>
+                    <!-- Location Suggestions -->
+                    <q-list v-if="locationSuggestions.length > 0" bordered class="rounded-borders q-mt-xs">
+                      <q-item
+                        v-for="(suggestion, idx) in locationSuggestions"
+                        :key="idx"
+                        clickable
+                        v-ripple
+                        @click="selectLocation(suggestion)"
+                        dense
+                      >
+                        <q-item-section>
+                          <q-item-label>{{ suggestion.display }}</q-item-label>
+                        </q-item-section>
+                      </q-item>
+                    </q-list>
+                  </div>
+
+                  <!-- Distance Filter -->
+                  <div class="col-12 col-sm-6 col-md-4">
+                    <div class="text-caption q-mb-xs">Distance: {{ filterDistance }} miles</div>
+                    <q-slider
+                      v-model="filterDistance"
+                      :min="1"
+                      :max="500"
+                      :step="5"
+                      label
+                      label-always
+                      color="primary"
+                    />
+                  </div>
+
+                  <!-- Category Filter -->
+                  <div class="col-12 col-sm-6 col-md-4">
+                    <q-input
+                      v-model="filterCategory"
+                      label="Category"
+                      outlined
+                      dense
+                      clearable
+                      placeholder="e.g., Electronics, Books"
+                    >
+                      <template v-slot:prepend>
+                        <q-icon name="category" />
+                      </template>
+                    </q-input>
+                  </div>
+
+                  <!-- Condition Filter -->
+                  <div class="col-12 col-sm-6 col-md-4">
+                    <q-select
+                      v-model="filterCondition"
+                      :options="conditionOptions"
+                      label="Condition"
+                      outlined
+                      dense
+                      clearable
+                      emit-value
+                      map-options
+                    >
+                      <template v-slot:prepend>
+                        <q-icon name="stars" />
+                      </template>
+                    </q-select>
+                  </div>
+
+                  <!-- Apply Filters Button -->
+                  <div class="col-12">
+                    <q-btn
+                      label="Apply Filters"
+                      color="primary"
+                      @click="applyFilters"
+                      :loading="searchLoading"
+                      icon="check"
+                    />
+                  </div>
+                </div>
+              </div>
+            </q-slide-transition>
           </div>
           <div class="row">
             <div
@@ -186,12 +304,30 @@ export default {
       searchQuery: '',
       searchLoading: false,
       isSearching: false,
+      showFilters: false,
+      filterLocation: '',
+      filterLat: null,
+      filterLon: null,
+      filterDistance: 100,
+      filterCategory: '',
+      filterCondition: null,
+      conditionOptions: [
+        { label: 'New', value: 'new' },
+        { label: 'Used', value: 'used' },
+        { label: 'Refurbished', value: 'refurbished' }
+      ],
+      locationSuggestions: [],
+      locationSearchTimeout: null,
     }
   },
   computed: {
     isLoggedIn() {
       const authStore = useAuthStore()
       return authStore.isLoggedIn
+    },
+    hasActiveFilters() {
+      return this.filterCategory || this.filterCondition ||
+             (this.filterLat && this.filterLon)
     }
   },
   watch: {
@@ -210,14 +346,28 @@ export default {
     async getListings() {
       try {
         const authStore = useAuthStore()
-        const res = await api.get(`listings`, {
-          params: {
-            user_id: authStore.user ? authStore.user.id : null,
-            lat: 37, // TEMP PLACEHOLDERS
-            lon: -121,
-            dist: 100
-          }
-        })
+        const params = {
+          user_id: authStore.user ? authStore.user.id : null,
+        }
+
+        // Add location filters if set
+        if (this.filterLat && this.filterLon) {
+          params.lat = this.filterLat
+          params.lon = this.filterLon
+          params.dist = this.filterDistance
+        }
+
+        // Add category filter if set
+        if (this.filterCategory) {
+          params.category = this.filterCategory
+        }
+
+        // Add condition filter if set
+        if (this.filterCondition) {
+          params.condition = this.filterCondition
+        }
+
+        const res = await api.get(`listings`, { params })
         console.log("API response:", res.data) // Debug log
 
         // Ensure listings is always an array
@@ -307,7 +457,8 @@ export default {
     },
 
     async searchListings() {
-      if (!this.searchQuery.trim()) {
+      console.log(this.searchQuery)
+      if (!this.searchQuery || !this.searchQuery.trim()) {
         return
       }
 
@@ -316,12 +467,29 @@ export default {
 
       try {
         const authStore = useAuthStore()
-        const res = await api.get(`listings/search`, {
-          params: {
-            q: this.searchQuery.trim(),
-            user_id: authStore.user ? authStore.user.id : null
-          }
-        })
+        const params = {
+          q: this.searchQuery.trim(),
+          user_id: authStore.user ? authStore.user.id : null
+        }
+
+        // Add location filters if set
+        if (this.filterLat && this.filterLon) {
+          params.lat = this.filterLat
+          params.lon = this.filterLon
+          params.dist = this.filterDistance
+        }
+
+        // Add category filter if set
+        if (this.filterCategory) {
+          params.category = this.filterCategory
+        }
+
+        // Add condition filter if set
+        if (this.filterCondition) {
+          params.condition = this.filterCondition
+        }
+
+        const res = await api.get(`listings/search`, { params })
 
         // Ensure listings is always an array
         this.response = Array.isArray(res.data) ? res.data : []
@@ -345,6 +513,60 @@ export default {
       this.searchQuery = ''
       this.isSearching = false
       await this.getListings() // Load all listings again
+    },
+
+    async onLocationInput(value) {
+      // Clear previous timeout
+      if (this.locationSearchTimeout) {
+        clearTimeout(this.locationSearchTimeout)
+      }
+
+      // Clear suggestions if input is empty
+      if (!value || value.trim().length < 3) {
+        this.locationSuggestions = []
+        return
+      }
+
+      // Debounce location search
+      this.locationSearchTimeout = setTimeout(async () => {
+        try {
+          const res = await api.get(`listings/location-suggestions/${value}`, {
+            params: { limit: 5 }
+          })
+          this.locationSuggestions = res.data.suggestions || []
+        } catch (e) {
+          console.error("Error fetching location suggestions:", e)
+          this.locationSuggestions = []
+        }
+      }, 300) // 300ms debounce
+    },
+
+    async selectLocation(suggestion) {
+      this.filterLocation = suggestion.display
+      this.filterLat = suggestion.latitude
+      this.filterLon = suggestion.longitude
+      this.locationSuggestions = []
+    },
+
+    async applyFilters() {
+      // Apply filters by reloading listings with current filter parameters
+      if (this.isSearching) {
+        await this.searchListings()
+      } else {
+        await this.getListings()
+      }
+    },
+
+    clearFilters() {
+      this.filterLocation = ''
+      this.filterLat = null
+      this.filterLon = null
+      this.filterDistance = 100
+      this.filterCategory = ''
+      this.filterCondition = null
+      this.locationSuggestions = []
+      // Reload listings without filters
+      this.getListings()
     }
   },
   async mounted() {
@@ -363,14 +585,8 @@ export default {
     }
     window.addEventListener('storage', this.handleStorageChange)
 
-    // Optional: Poll every 10 seconds to always show current listings and unread count
-    this.polling = setInterval(() => {
-      this.getListings()
-      this.getUnreadCount()
-    }, 10000) // 10000 = 10s
   },
   beforeUnmount() {
-    clearInterval(this.polling)
     window.removeEventListener('storage', this.handleStorageChange)
   }
 }
