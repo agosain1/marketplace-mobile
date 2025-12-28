@@ -228,16 +228,23 @@
 import { ref, onMounted, watch } from "vue"
 import { useRouter } from "vue-router"
 import { api } from 'src/boot/axios'
-import { useAuthStore } from 'stores/authStore.js'
+import { useAuth } from 'src/composables/useAuth'
 import { locationService } from '../services/locationService.js'
 import LocationMap from '../components/LocationMap.vue'
 
 const router = useRouter()
-const authStore = useAuthStore()
+const { isAuthenticated, isLoading } = useAuth()
 
-// Check authentication on mount
+// Watch for authentication state changes
+watch(isAuthenticated, (newVal) => {
+  if (!isLoading.value && !newVal) {
+    router.push('/login')
+  }
+})
+
+// Check authentication on mount (after loading completes)
 onMounted(() => {
-  if (!authStore.isLoggedIn) {
+  if (!isLoading.value && !isAuthenticated.value) {
     router.push('/login')
   }
 })
@@ -364,7 +371,7 @@ async function addListing() {
     return
   }
 
-  if (!authStore.isLoggedIn) {
+  if (!isAuthenticated.value) {
     message.value = "Please log in to add a listing"
     router.push('/login')
     return
