@@ -1,6 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from sqlalchemy.orm import Session
-import jwt
+from jose import jwt
 import os
 import logging
 from dotenv import load_dotenv
