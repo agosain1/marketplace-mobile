@@ -139,7 +139,6 @@ def get_listings(user_id: Optional[str] = None,
                  lon: Optional[float] = None,
                  dist: Optional[float] = None,
                  org_filter: Optional[bool] = False,
-                 email_filter: Optional[str] = None,
                  category: Optional[str] = None,
                  condition: Optional[str] = None
                  ):
@@ -150,7 +149,7 @@ def get_listings(user_id: Optional[str] = None,
         .order_by(Listings.created_at.desc())
     )
 
-    query = apply_filters(user_id, query, lat, lon, dist, org_filter, db, email_filter, category, condition)
+    query = apply_filters(user_id, query, lat, lon, dist, org_filter, db, category, condition)
 
     listings = query.all()
 
@@ -169,7 +168,6 @@ def search_listing(q: str, user_id: Optional[str] = None, db: Session = Depends(
                  lon: Optional[float] = None,
                  dist: Optional[float] = None,
                    org_filter: Optional[bool] = False,
-                   email_filter: Optional[str] = None,
                    category: Optional[str] = None,
                    condition: Optional[str] = None):
     query = (
@@ -178,7 +176,7 @@ def search_listing(q: str, user_id: Optional[str] = None, db: Session = Depends(
         .order_by(Listings.created_at.desc())
     )
 
-    query = apply_filters(user_id, query, lat, lon, dist, org_filter, db, email_filter, category, condition)
+    query = apply_filters(user_id, query, lat, lon, dist, org_filter, db, category, condition)
 
     if q:
         query = query.filter(
@@ -317,7 +315,6 @@ def filter_by_location(query: Query[Listing], lat: Optional[float] = None,
     return query
 
 def apply_filters(user_id: str, query: Query[Listing], lat, lon, dist, org_filter, db,
-                  email_filter: Optional[str] = None,
                   category: Optional[str] = None,
                   condition: Optional[str] = None):
     if org_filter:
@@ -327,10 +324,6 @@ def apply_filters(user_id: str, query: Query[Listing], lat, lon, dist, org_filte
             email = asker.email
             org = email.split('@')[-1]
             query = query.filter(Users.email.ilike(f"%@{org}"))
-
-    # Email filter - search by seller's email (can be partial match)
-    if email_filter:
-        query = query.filter(Users.email.ilike(f"%{email_filter}%"))
 
     # Category filter - exact or partial match
     if category:

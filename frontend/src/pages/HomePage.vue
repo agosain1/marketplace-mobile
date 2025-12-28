@@ -150,22 +150,6 @@
                     />
                   </div>
 
-                  <!-- Email Filter -->
-                  <div class="col-12 col-sm-6 col-md-4">
-                    <q-input
-                      v-model="filterEmail"
-                      label="Seller Email"
-                      outlined
-                      dense
-                      clearable
-                      placeholder="Search by email"
-                    >
-                      <template v-slot:prepend>
-                        <q-icon name="email" />
-                      </template>
-                    </q-input>
-                  </div>
-
                   <!-- Category Filter -->
                   <div class="col-12 col-sm-6 col-md-4">
                     <q-input
@@ -325,7 +309,6 @@ export default {
       filterLat: null,
       filterLon: null,
       filterDistance: 100,
-      filterEmail: '',
       filterCategory: '',
       filterCondition: null,
       conditionOptions: [
@@ -343,7 +326,7 @@ export default {
       return authStore.isLoggedIn
     },
     hasActiveFilters() {
-      return this.filterEmail || this.filterCategory || this.filterCondition ||
+      return this.filterCategory || this.filterCondition ||
              (this.filterLat && this.filterLon)
     }
   },
@@ -372,11 +355,6 @@ export default {
           params.lat = this.filterLat
           params.lon = this.filterLon
           params.dist = this.filterDistance
-        }
-
-        // Add email filter if set
-        if (this.filterEmail) {
-          params.email_filter = this.filterEmail
         }
 
         // Add category filter if set
@@ -479,7 +457,8 @@ export default {
     },
 
     async searchListings() {
-      if (!this.searchQuery.trim()) {
+      console.log(this.searchQuery)
+      if (!this.searchQuery || !this.searchQuery.trim()) {
         return
       }
 
@@ -498,11 +477,6 @@ export default {
           params.lat = this.filterLat
           params.lon = this.filterLon
           params.dist = this.filterDistance
-        }
-
-        // Add email filter if set
-        if (this.filterEmail) {
-          params.email_filter = this.filterEmail
         }
 
         // Add category filter if set
@@ -588,7 +562,6 @@ export default {
       this.filterLat = null
       this.filterLon = null
       this.filterDistance = 100
-      this.filterEmail = ''
       this.filterCategory = ''
       this.filterCondition = null
       this.locationSuggestions = []
@@ -612,14 +585,8 @@ export default {
     }
     window.addEventListener('storage', this.handleStorageChange)
 
-    // Optional: Poll every 10 seconds to always show current listings and unread count
-    this.polling = setInterval(() => {
-      this.getListings()
-      this.getUnreadCount()
-    }, 10000) // 10000 = 10s
   },
   beforeUnmount() {
-    clearInterval(this.polling)
     window.removeEventListener('storage', this.handleStorageChange)
   }
 }
