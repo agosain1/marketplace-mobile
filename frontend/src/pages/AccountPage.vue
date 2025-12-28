@@ -12,7 +12,7 @@
         <q-card style="width: 100%; max-width: 500px;">
           <q-card-section>
 
-        <div v-if="user && profile" class="q-gutter-md">
+        <div v-if="isAuthenticated && profile" class="q-gutter-md">
           <!-- Profile Section -->
           <div class="text-h6 q-mb-md">Profile Information</div>
 
@@ -150,7 +150,7 @@
           />
         </div>
 
-        <div v-else-if="!user" class="flex flex-center">
+        <div v-else-if="!isLoading && !isAuthenticated" class="flex flex-center">
           <q-card style="width: 100%; max-width: 400px;">
             <q-card-section class="text-center">
               <q-icon name="login" size="64px" color="primary" class="q-mb-md" />
@@ -181,13 +181,24 @@
 
 <script>
 import { api } from 'src/boot/axios'
+import { useAuth } from 'src/composables/useAuth'
 import { useAuthStore } from 'stores/authStore.js'
 
 export default {
   name: "AccountPage",
+  setup() {
+    const { user, isAuthenticated, isLoading } = useAuth()
+    const authStore = useAuthStore()
+
+    return {
+      user,
+      isAuthenticated,
+      isLoading,
+      authStore
+    }
+  },
   data() {
     return {
-      user: null,
       profile: null,
       editMode: false,
       loading: false,
@@ -200,16 +211,18 @@ export default {
     }
   },
   mounted() {
-    this.loadUser()
-    if (this.user) {
+    if (this.isAuthenticated) {
       this.loadProfile()
     }
   },
+  watch: {
+    isAuthenticated(newVal) {
+      if (newVal && !this.profile) {
+        this.loadProfile()
+      }
+    }
+  },
   methods: {
-    loadUser() {
-      const authStore = useAuthStore()
-      this.user = authStore.user
-    },
 
     async loadProfile() {
       if (!this.user) return
@@ -278,8 +291,7 @@ export default {
 
     async logout() {
       await api.post(`auth/logout`)
-      const authStore = useAuthStore()
-      authStore.clearAuth()
+      this.authStore.clearAuth()
       this.$router.push('/')
     },
 
@@ -344,8 +356,7 @@ export default {
         await api.delete(`account/delete-account`)
 
         alert('Your account has been successfully deleted.')
-        const authStore = useAuthStore()
-        authStore.clearAuth()
+        this.authStore.clearAuth()
         this.$router.push('/')
 
       } catch (e) {
