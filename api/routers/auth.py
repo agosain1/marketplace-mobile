@@ -216,8 +216,7 @@ def register(register: Register, db: Session = Depends(get_db)):
             fname=register.fname,
             lname=register.lname,
             email=register.email,
-            password=hashed_password,
-            created_at=datetime.datetime.now(datetime.timezone.utc)
+            password=hashed_password
         )
         
         db.add(new_user)
@@ -241,7 +240,8 @@ def register(register: Register, db: Session = Depends(get_db)):
     except Exception as e:
         # Roll back the transaction if anything fails
         db.rollback()
-        
+        print(e)
+
         # Check if it's an email service error
         if "email" in str(e).lower() or "mail" in str(e).lower():
             raise HTTPException(

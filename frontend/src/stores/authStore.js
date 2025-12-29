@@ -22,6 +22,7 @@ export const useAuthStore = defineStore('auth', {
     setAuth(userData) {
       this.user = userData
       this.isAuthenticated = true
+      console.log(userData)
     },
 
     // Clear auth data
