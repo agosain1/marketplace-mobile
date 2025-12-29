@@ -84,8 +84,20 @@
               <q-toolbar class="bg-grey-1">
                 <q-avatar color="primary" text-color="white" size="32px">
                   {{ (selectedConversationName || selectedConversation).charAt(0).toUpperCase() }}
+                  <q-badge v-if="isOtherUserOnline" color="green" floating rounded />
                 </q-avatar>
-                <q-toolbar-title class="q-ml-sm">{{ selectedConversationName || selectedConversation }}</q-toolbar-title>
+                <q-toolbar-title class="q-ml-sm">
+                  {{ selectedConversationName || selectedConversation }}
+                  <div v-if="isOtherUserOnline" class="text-caption text-grey-7">online</div>
+                </q-toolbar-title>
+                <q-chip
+                  :color="isConnected ? 'green' : 'orange'"
+                  text-color="white"
+                  size="sm"
+                  :icon="isConnected ? 'wifi' : 'wifi_off'"
+                >
+                  {{ isConnected ? 'Live' : 'Offline' }}
+                </q-chip>
               </q-toolbar>
 
               <!-- Messages Container -->
@@ -119,6 +131,12 @@
                       </div>
                     </div>
                   </div>
+
+                  <!-- Typing Indicator -->
+                  <div v-if="isOtherUserTyping" class="typing-indicator q-pa-sm">
+                    <q-spinner-dots color="primary" size="20px" />
+                    <span class="q-ml-sm text-caption text-grey-7">typing...</span>
+                  </div>
                 </div>
               </q-scroll-area>
 
@@ -131,6 +149,7 @@
                   dense
                   class="col"
                   @keyup.enter="sendMessage"
+                  @input="onTyping"
                   :loading="sendingMessage"
                 />
                 <q-btn
@@ -190,132 +209,65 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { api } from 'src/boot/axios'
 import { useAuthStore } from 'stores/authStore.js'
+import { useMessagesStore } from 'stores/messagesStore.js'
+import { storeToRefs } from 'pinia'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const messagesStore = useMessagesStore()
 
-// Reactive data
-const conversations = ref([])
-const selectedConversation = ref(null)
-const selectedConversationName = ref(null)
-const currentMessages = ref([])
+// Get reactive state from messages store
+const {
+  conversations,
+  currentMessages,
+  selectedConversation,
+  selectedConversationName,
+  selectedConversationId,
+  isConnected,
+  typingUsers,
+  onlineUsers
+} = storeToRefs(messagesStore)
+
+// Local component state
 const newMessage = ref('')
 const sendingMessage = ref(false)
-const currentUserId = ref(null)
 const showNewMessageDialog = ref(false)
 const newMessageEmail = ref('')
 const newMessageContent = ref('')
 const messagesScrollArea = ref(null)
+const typingTimeout = ref(null)
 
-// Methods
+// Computed properties
+const currentUserId = computed(() => authStore.user?.id)
+
+const isOtherUserTyping = computed(() => {
+  return selectedConversationId.value && typingUsers.value[selectedConversationId.value]
+})
+
+const isOtherUserOnline = computed(() => {
+  return selectedConversationId.value && onlineUsers.value.has(selectedConversationId.value)
+}) // could remove if not necessary (typing doesnt work)
+
 const goHome = () => {
   router.push('/')
 }
 
 const refreshMessages = async () => {
-  await loadConversations()
+  await messagesStore.loadConversations()
   if (selectedConversation.value) {
-    await loadConversation(selectedConversation.value)
-  }
-}
-
-const loadConversations = async () => {
-  try {
-    // Get user messages and group them by conversation
-    if (!authStore.isLoggedIn) {
-      router.push('/login')
-      return
-    }
-
-    const response = await api.get('/messages/user-messages')
-
-    const messages = response.data
-
-    // Group messages by conversation partner
-    const conversationMap = new Map()
-
-    messages.forEach(message => {
-      const otherUserEmail = message.sender_id === currentUserId.value
-        ? message.receiver_email
-        : message.sender_email
-      const otherUserName = message.sender_id === currentUserId.value
-        ? message.receiver_name
-        : message.sender_name
-
-      if (!conversationMap.has(otherUserEmail)) {
-        conversationMap.set(otherUserEmail, {
-          other_user_email: otherUserEmail,
-          other_user_name: otherUserName,
-          last_message: message.content,
-          last_message_time: message.created_at,
-          unread_count: 0
-        })
-      }
-
-      const conv = conversationMap.get(otherUserEmail)
-      if (new Date(message.created_at) > new Date(conv.last_message_time)) {
-        conv.last_message = message.content
-        conv.last_message_time = message.created_at
-      }
-
-      if (!message.read_at && message.receiver_id === currentUserId.value) {
-        conv.unread_count++
-      }
-    })
-
-    conversations.value = Array.from(conversationMap.values())
-      .sort((a, b) => new Date(b.last_message_time) - new Date(a.last_message_time))
-
-  } catch (error) {
-    console.error('Error loading conversations:', error)
+    await messagesStore.loadConversation(selectedConversation.value)
   }
 }
 
 const selectConversation = async (email) => {
-  selectedConversation.value = email
-  // Find and set the conversation name
-  const conversation = conversations.value.find(conv => conv.other_user_email === email)
-  selectedConversationName.value = conversation ? (conversation.other_user_name || conversation.other_user_email) : email
-  await loadConversation(email)
-}
+  await messagesStore.selectConversation(email)
 
-const loadConversation = async (email) => {
-  try {
-    const response = await api.get(`/messages/conversation/${email}`)
-
-    currentMessages.value = response.data
-
-    // Mark messages as read
-    const unreadMessages = currentMessages.value.filter(
-      msg => !msg.read_at && msg.receiver_id === currentUserId.value
-    )
-
-    for (const message of unreadMessages) {
-      try {
-        await api.patch(`/messages/${message.message_id}/read`)
-      } catch (error) {
-        console.error('Error marking message as read:', error)
-      }
-    }
-
-    // Trigger unread count update on other pages (keep this for cross-component communication)
-    if (unreadMessages.length > 0) {
-      localStorage.setItem('messages_updated', Date.now().toString())
-    }
-
-    // Scroll to bottom
-    await nextTick()
-    if (messagesScrollArea.value) {
-      messagesScrollArea.value.setScrollPercentage('vertical', 1)
-    }
-
-  } catch (error) {
-    console.error('Error loading conversation:', error)
-  }
+  // Scroll to bottom after loading
+  await nextTick()
+  scrollToBottom()
 }
 
 const sendMessage = async () => {
@@ -324,24 +276,21 @@ const sendMessage = async () => {
   sendingMessage.value = true
 
   try {
-    const response = await api.post('/messages/send', {
-      receiver_email: selectedConversation.value,
-      content: newMessage.value.trim()
-    })
+    // Use WebSocket by default, falls back to REST if disconnected
+    const success = await messagesStore.sendMessage(selectedConversation.value, newMessage.value.trim())
 
-    const sentMessage = response.data
-    currentMessages.value.push(sentMessage)
-    newMessage.value = ''
+    if (success) {
+      newMessage.value = ''
 
-    // Scroll to bottom
-    await nextTick()
-    if (messagesScrollArea.value) {
-      messagesScrollArea.value.setScrollPercentage('vertical', 1)
+      // Stop typing indicator
+      if (selectedConversationId.value) {
+        messagesStore.stopTyping(selectedConversationId.value)
+      }
+
+      // Scroll to bottom
+      await nextTick()
+      scrollToBottom()
     }
-
-    // Update conversations list
-    await loadConversations()
-
   } catch (error) {
     console.error('Error sending message:', error)
   } finally {
@@ -355,27 +304,50 @@ const sendNewMessage = async () => {
   sendingMessage.value = true
 
   try {
-    await api.post('/messages/send', {
-      receiver_email: newMessageEmail.value.trim(),
-      content: newMessageContent.value.trim()
-    })
+    // Use WebSocket by default, falls back to REST if disconnected
+    const success = await messagesStore.sendMessage(newMessageEmail.value.trim(), newMessageContent.value.trim())
 
-    const recipientEmail = newMessageEmail.value.trim()
+    if (success) {
+      const recipientEmail = newMessageEmail.value.trim()
 
-    showNewMessageDialog.value = false
-    newMessageEmail.value = ''
-    newMessageContent.value = ''
+      showNewMessageDialog.value = false
+      newMessageEmail.value = ''
+      newMessageContent.value = ''
 
-    // Select the new conversation
-    selectedConversation.value = recipientEmail
-    await loadConversations()
-    await loadConversation(recipientEmail)
+      // Select the new conversation
+      await messagesStore.selectConversation(recipientEmail)
 
-
+      // Scroll to bottom
+      await nextTick()
+      scrollToBottom()
+    }
   } catch (error) {
     console.error('Error sending new message:', error)
   } finally {
     sendingMessage.value = false
+  }
+}
+
+const onTyping = () => {
+  if (!selectedConversationId.value) return
+
+  // Send typing start
+  messagesStore.startTyping(selectedConversationId.value)
+
+  // Clear previous timeout
+  if (typingTimeout.value) {
+    clearTimeout(typingTimeout.value)
+  }
+
+  // Auto-stop typing after 1 second of inactivity
+  typingTimeout.value = setTimeout(() => {
+    messagesStore.stopTyping(selectedConversationId.value)
+  }, 1000)
+}
+
+const scrollToBottom = () => {
+  if (messagesScrollArea.value) {
+    messagesScrollArea.value.setScrollPercentage('vertical', 1)
   }
 }
 
@@ -393,6 +365,12 @@ const formatTime = (dateString) => {
   }
 }
 
+// Watch for new messages to auto-scroll
+watch(currentMessages, async () => {
+  await nextTick()
+  scrollToBottom()
+}, { deep: true })
+
 // Load data on mount
 onMounted(async () => {
   // Get current user ID from auth store
@@ -401,20 +379,8 @@ onMounted(async () => {
     return
   }
 
-  try {
-    currentUserId.value = authStore.user?.id
-    if (!currentUserId.value) {
-      console.error('No user ID found in auth store')
-      router.push('/login')
-      return
-    }
-  } catch (error) {
-    console.error('Error getting user from auth store:', error)
-    router.push('/login')
-    return
-  }
-
-  await loadConversations()
+  // Load conversations from store
+  await messagesStore.loadConversations()
 
   // Check if we should start a new conversation from query params
   const route = router.currentRoute.value

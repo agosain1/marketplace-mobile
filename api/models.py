@@ -112,7 +112,7 @@ class Messages(Base):
     sender: Mapped['Users'] = relationship('Users', foreign_keys=[sender_id], back_populates='messages_')
 
 
-class VerificationCodes(Users):
+class VerificationCodes(Base):
     __tablename__ = 'verification_codes'
     __table_args__ = (
         ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE', name='verification_codes_user_id_fkey'),

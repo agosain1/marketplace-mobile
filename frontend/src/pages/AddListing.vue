@@ -222,7 +222,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </div> <!-- ADD TAGS FORM -->
 
       <q-btn label="Add Listing" color="secondary" class="full-width" @click="addListing" />
         </div>

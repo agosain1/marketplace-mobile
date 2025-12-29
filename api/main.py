@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth, listings, messages, account
+from routers import auth, listings, messages, account, websocket
 from dotenv import load_dotenv
 import os
 
@@ -38,3 +38,4 @@ app.include_router(listings.router)
 app.include_router(auth.router)
 app.include_router(messages.router)
 app.include_router(account.router)
+app.include_router(websocket.router)
