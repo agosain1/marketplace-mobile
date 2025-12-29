@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session, Query
 from sqlalchemy import or_
 from fastapi import HTTPException, status
 from services.s3_service import get_s3_service
+from schemas.listings import Listing
+from schemas.auth import User
 from services.location_service import (get_location_from_coords,
                                            search_location, search_location_suggestions,
                                            get_bounding_box_corners, generate_coord_offset)
@@ -16,23 +18,6 @@ router = APIRouter(
     prefix="/listings",
     tags=["listings"]
 )
-
-
-class Listing(BaseModel):
-    title: str
-    description: str
-    price: float
-    category: str
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    condition: str
-
-class User(BaseModel):
-    id: uuid.UUID
-    fname: str
-    lname: str
-    email: str
-    pfp_url: Optional[list[str]] = None
 
 @router.post("")
 async def create_listing(

@@ -1,7 +1,7 @@
 from fastapi import Request, Response, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from models import Users, VerificationCodes, RefreshTokens
-from schemas.auth import UserCreate, UserLogin, VerifyEmail, Email
+from schemas.auth import UserCreate, UserLogin, VerifyEmail, Email, User
 from utils.password import verify_password, hash_password
 from utils.verify_account import generate_verification_code, store_verification_code, send_verification_email, send_password_reset_email
 from utils.jwt import create_access_token, get_current_user_id, issue_new_access_token, validate_refresh_token
@@ -215,13 +215,11 @@ def create_and_set_cookie(response: Response, user: Users, db: Session):
         max_age=24 * 60 * 60 * REFRESH_TOKEN_DAYS  # variable days in seconds (default 7)
     )
 
-    user_info = {
-        "id": user.id,
-        "email": user.email,
-        "fname": user.fname,
-        "lname": user.lname,
-        "pfp_url": user.pfp_url,
-    }
+    user_info = User(id=user.id,
+                     fname=user.fname,
+                     lname=user.lname,
+                     email=user.email,
+                     pfp_url=user.pfp_url)
 
     return {
         "success": True,

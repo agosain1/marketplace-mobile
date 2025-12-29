@@ -1,4 +1,6 @@
 from pydantic import BaseModel
+import uuid
+from typing import Optional
 
 class UserLogin(BaseModel):
     email: str
@@ -24,3 +26,11 @@ class Email(BaseModel):
 class GoogleAuth(BaseModel):
     idToken: str
     profile: dict
+
+
+class User(BaseModel):
+    id: uuid.UUID
+    fname: str
+    lname: str
+    email: str
+    pfp_url: Optional[list[str]] = None

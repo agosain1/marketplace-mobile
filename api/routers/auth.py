@@ -21,7 +21,7 @@ from services.auth_service import (register_user,
                                    delete_auth_cookies,
                                    logout_user)
 from sqlalchemy.orm import Session
-from schemas.auth import UserCreate, UserLogin, Email, VerifyEmail, GoogleAuth
+from schemas.auth import UserCreate, UserLogin, Email, VerifyEmail, GoogleAuth, User
 from utils.jwt import validate_refresh_token, get_current_user_id, issue_new_access_token
 
 router = APIRouter(
@@ -92,14 +92,11 @@ def get_current_user(request: Request, user_id: str = Depends(get_current_user_i
         )
 
     user = db.query(Users).filter(Users.id == user_id).first()
-
-    user_info = {
-        "id": user.id,
-        "email": user.email,
-        "fname": user.fname,
-        "lname": user.lname,
-        "pfp_url": user.pfp_url,
-    }
+    user_info = User(id=user.id,
+                     fname=user.fname,
+                     lname=user.lname,
+                     email=user.email,
+                     pfp_url=user.pfp_url)
 
     return user_info
 
