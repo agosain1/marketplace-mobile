@@ -167,6 +167,7 @@ def google_signin(google_auth: GoogleAuth, response: Response, db: Session = Dep
             if not existing_user.google_id:
                 existing_user.google_id = google_sub
                 existing_user.email_verified = True
+                existing_user.pfp_url = [picture]
                 db.commit()
 
             return create_and_set_cookie(response, existing_user, db)
