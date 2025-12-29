@@ -445,14 +445,12 @@ def _create_and_set_cookie(response: Response, user: Users):
     # If user is verified, create JWT token and set HTTP-only cookie
     token = create_jwt_token(user.id, user.email)
 
-    # Set HTTP-only cookie with secure flags (secure=False for development)
-    is_production = os.getenv("NODE_ENV") == "production"
     response.set_cookie(
         key = "auth_token",
         value = token,
         max_age = 7 * 24 * 60 * 60,  # 7 days in seconds
         httponly = True,
-        secure = is_production,  # Only secure in production (HTTPS)
+        secure = True,  # Only secure in production (HTTPS)
         samesite = "lax"
     )
 
