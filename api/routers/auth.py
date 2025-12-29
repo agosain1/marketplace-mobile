@@ -85,12 +85,14 @@ def verify_jwt_token(request: Request):
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms = [JWT_ALGORITHM])
         return payload
-    except jwt.ExpiredSignatureError:
+    except jwt.ExpiredSignatureError as e:
+        print(e)
         raise HTTPException(
             status_code = status.HTTP_401_UNAUTHORIZED,
             detail = "Token has expired"
         )
-    except jwt.InvalidTokenError:
+    except jwt.InvalidTokenError as e:
+        print(e)
         raise HTTPException(
             status_code = status.HTTP_401_UNAUTHORIZED,
             detail = "Invalid token"
