@@ -37,7 +37,7 @@ export default defineRouter(function (/* { store, ssrContext } */) {
   Router.beforeEach(async (to, from, next) => {
     // Import the useAuth composable dynamically to avoid circular imports
     const { useAuth } = await import('../composables/useAuth')
-    const { validateToken, isAuthenticated } = useAuth()
+    const { fetchMe, isAuthenticated } = useAuth()
 
     // Define public routes (no authentication required)
     const publicRoutes = ['/', '/login', '/register']
@@ -51,8 +51,8 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     if (!isPublicRoute) {
       // Check if user is already authenticated
       if (!isAuthenticated.value) {
-        // Try to validate token from HTTP-only cookie
-        const isValid = await validateToken()
+        // Try to fetch user from HTTP-only cookie
+        const isValid = await fetchMe()
 
         if (!isValid) {
           // Redirect to login with return URL

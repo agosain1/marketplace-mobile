@@ -23,7 +23,7 @@ class WebSocketService {
 
   /**
    * Connect to WebSocket server
-   * Uses existing auth_token cookie for authentication
+   * Uses existing access_token cookie for authentication
    */
   connect() {
     // Prevent multiple simultaneous connections

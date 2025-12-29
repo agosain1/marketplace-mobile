@@ -36,6 +36,8 @@ class Users(Base):
         PrimaryKeyConstraint('id', name='users_pkey'),
         UniqueConstraint('email', name='users_email_key'),
         UniqueConstraint('google_id', name='users_google_id_key'),
+        Index('idx_users_created_at', 'created_at'),
+        Index('idx_users_email', 'email', unique=True),
         Index('idx_users_google_id', 'google_id')
     )
 
@@ -54,6 +56,7 @@ class Users(Base):
     listings: Mapped[list['Listings']] = relationship('Listings', back_populates='seller')
     messages: Mapped[list['Messages']] = relationship('Messages', foreign_keys='[Messages.receiver_id]', back_populates='receiver')
     messages_: Mapped[list['Messages']] = relationship('Messages', foreign_keys='[Messages.sender_id]', back_populates='sender')
+    refresh_tokens: Mapped[list['RefreshTokens']] = relationship('RefreshTokens', back_populates='user')
 
 
 class Listings(Base):
@@ -110,6 +113,25 @@ class Messages(Base):
 
     receiver: Mapped['Users'] = relationship('Users', foreign_keys=[receiver_id], back_populates='messages')
     sender: Mapped['Users'] = relationship('Users', foreign_keys=[sender_id], back_populates='messages_')
+
+
+class RefreshTokens(Base):
+    __tablename__ = 'refresh_tokens'
+    __table_args__ = (
+        ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE', name='refresh_tokens_user_id_fkey'),
+        PrimaryKeyConstraint('id', name='refresh_tokens_pkey'),
+        Index('idx_refresh_tokens_expires_at', 'expires_at'),
+        Index('idx_refresh_tokens_user_id', 'user_id'),
+        Index('idx_refresh_tokens_user_revoked', 'user_id', 'revoked')
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, server_default=text('gen_random_uuid()'))
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid)
+    expires_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, server_default=text("(CURRENT_TIMESTAMP + '7 days'::interval)"))
+    revoked: Mapped[Optional[bool]] = mapped_column(Boolean, server_default=text('false'))
+    created_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, server_default=text('CURRENT_TIMESTAMP'))
+
+    user: Mapped[Optional['Users']] = relationship('Users', back_populates='refresh_tokens')
 
 
 class VerificationCodes(Base):

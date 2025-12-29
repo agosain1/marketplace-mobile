@@ -1,10 +1,10 @@
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, UploadFile, File, Form
-from db.database import get_db
+from database import get_db
+from services.auth_service import get_current_user_id
 from models import Users, Listings
 from sqlalchemy.orm import Session, Query
 from sqlalchemy import or_
-from .auth import verify_jwt_token
 from fastapi import HTTPException, status
 from services.s3_service import get_s3_service
 from services.location_service import (get_location_from_coords,
@@ -44,10 +44,9 @@ async def create_listing(
     longitude: float = Form(...),
     condition: str = Form(...),
     images: Optional[List[UploadFile]] = File(None),
-    token_data: dict = Depends(verify_jwt_token),
+    seller_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
-    seller_id = token_data['uuid']
     s3_id = str(uuid.uuid4())
     image_urls = []
     
@@ -262,9 +261,9 @@ def increment_listing_view(listing_id: str, request: IncrementViewRequest, db: S
     return {"views": listing.views, "incremented": True}
 
 @router.delete("/{listing_id}")
-def delete_listing(listing_id: str, token_data: dict = Depends(verify_jwt_token), db: Session = Depends(get_db)):
-    user_id = uuid.UUID(token_data['uuid'])
-    
+def delete_listing(listing_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    user_id = uuid.UUID(user_id)
+
     # Find the listing
     listing = db.query(Listings).filter(Listings.id == uuid.UUID(listing_id)).first()
     

@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
-import { authService } from '../services/authService'
+import { api } from 'src/boot/axios'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
     isAuthenticated: false,
-    isLoading: false
+    isLoading: true
   }),
 
   getters: {
@@ -18,39 +18,47 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    // Set authenticated user (from cookie validation)
+    // Fetch current user from token validation
+    async fetchMe() {
+      try {
+        console.log('Fetching user data...')
+        const response = await api.get('/auth/me')
+        console.log('User data fetched:', response.data)
+
+        this.user = response.data
+        this.isAuthenticated = true
+        this.isLoading = false
+      } catch (error) {
+        console.error('Failed to fetch user:', error)
+        this.user = null
+        this.isAuthenticated = false
+        this.isLoading = false
+      }
+    },
+
+    // Logout user
+    async logout() {
+      try {
+        await api.post('/auth/logout')
+      } finally {
+        this.user = null
+        this.isAuthenticated = false
+        this.isLoading = false
+      }
+    },
+
+    // Set authenticated user (for login/register)
     setAuth(userData) {
       this.user = userData
       this.isAuthenticated = true
-      console.log(userData)
+      this.isLoading = false
     },
 
     // Clear auth data
     clearAuth() {
       this.user = null
       this.isAuthenticated = false
-    },
-
-    // Validate current token (cookies are sent automatically)
-    async validateToken() {
-      this.isLoading = true
-      try {
-        const result = await authService.validateToken()
-
-        if (result.success) {
-          this.setAuth(result.data.user)
-          return true
-        } else {
-          this.clearAuth()
-          return false
-        }
-      } catch (error) {
-        console.error('Token validation failed:', error)
-        this.clearAuth()
-        return false
-      } finally {
-        this.isLoading = false
-      }
+      this.isLoading = false
     }
   }
 })

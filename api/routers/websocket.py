@@ -5,7 +5,7 @@ import os
 import logging
 from dotenv import load_dotenv
 
-from db.database import get_db
+from database import get_db
 from services.websocket_manager import manager
 from services.messaging_service import send_message, mark_message_as_read, get_unread_messages_count
 from models import Users, Messages
@@ -33,24 +33,30 @@ def get_user_from_websocket(websocket: WebSocket):
         # Get cookie header from WebSocket
         cookie_header = websocket.headers.get('cookie', '')
 
-        # Parse cookies to find auth_token
-        auth_token = None
+        # Parse cookies to find access_token
+        access_token = None
         for cookie in cookie_header.split(';'):
             cookie = cookie.strip()
-            if cookie.startswith('auth_token='):
-                auth_token = cookie.split('auth_token=')[1]
+            if cookie.startswith('access_token='):
+                access_token = cookie.split('access_token=')[1]
                 break
 
-        if not auth_token:
-            logger.warning("No auth_token found in WebSocket cookies")
+        if not access_token:
+            logger.warning("No access_token found in WebSocket cookies")
             return None
 
         # Verify JWT token
-        payload = jwt.decode(auth_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user_id = payload.get('uuid')
+        payload = jwt.decode(access_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+
+        # Verify token type
+        if payload.get('type') != 'access':
+            logger.warning("Invalid token type in JWT payload")
+            return None
+
+        user_id = payload.get('sub')
 
         if not user_id:
-            logger.warning("No uuid found in JWT payload")
+            logger.warning("No sub (user_id) found in JWT payload")
             return None
 
         return user_id
@@ -75,7 +81,7 @@ async def websocket_endpoint(
     WebSocket endpoint for real-time messaging.
 
     Authentication:
-    - Uses existing auth_token cookie (automatically sent with WebSocket handshake)
+    - Uses existing access_token cookie (automatically sent with WebSocket handshake)
     - No separate token needed
 
     Message format from client:
