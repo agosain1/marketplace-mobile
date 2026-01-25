@@ -290,8 +290,7 @@ export default {
     },
 
     async logout() {
-      await api.post(`auth/logout`)
-      this.authStore.clearAuth()
+      await this.authStore.logout()
       this.$router.push('/')
     },
 

@@ -3,12 +3,12 @@ import { RouterView } from 'vue-router'
 import { onMounted } from 'vue'
 import { useAuth } from './composables/useAuth'
 
-const { validateToken, startTokenValidation } = useAuth()
+const { fetchMe, startTokenValidation } = useAuth()
 
 onMounted(async () => {
-  // Try to validate token from HTTP-only cookie on app startup
-  await validateToken()
-  
+  // Fetch user data from HTTP-only cookie on app startup
+  await fetchMe()
+
   // Start periodic token validation
   startTokenValidation()
 })

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from models import Users, Listings, Messages
-from .auth import verify_jwt_token
+from utils.jwt import get_current_user_id
 from sqlalchemy.orm import Session
-from db.database import get_db
+from database import get_db
 from pydantic import BaseModel
 
 
@@ -17,10 +17,8 @@ class UpdateProfile(BaseModel):
 
 
 @router.delete('/delete-account')
-def delete_account(token_data: dict = Depends(verify_jwt_token), db: Session = Depends(get_db)):
+def delete_account(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     """Delete user account and all associated data"""
-    user_id = token_data['uuid']
-
     # Import S3 service here to avoid circular imports
     s3_service = None
     try:
@@ -73,10 +71,8 @@ def delete_account(token_data: dict = Depends(verify_jwt_token), db: Session = D
 
 
 @router.get('/profile')
-def get_profile(token_data: dict = Depends(verify_jwt_token), db: Session = Depends(get_db)):
+def get_profile(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     """Get user profile information"""
-    user_id = token_data['uuid']
-
     user = db.query(Users).filter(Users.id == user_id).first()
 
     if not user:
@@ -91,11 +87,9 @@ def get_profile(token_data: dict = Depends(verify_jwt_token), db: Session = Depe
 
 
 @router.put('/profile')
-def update_profile(profile_data: UpdateProfile, token_data: dict = Depends(verify_jwt_token),
+def update_profile(profile_data: UpdateProfile, user_id: str = Depends(get_current_user_id),
                    db: Session = Depends(get_db)):
     """Update user profile information"""
-    user_id = token_data['uuid']
-
     user = db.query(Users).filter(Users.id == user_id).first()
 
     if not user:
@@ -117,12 +111,10 @@ def update_profile(profile_data: UpdateProfile, token_data: dict = Depends(verif
 @router.put('/upload_pfp')
 async def upload_pfp(
     image: UploadFile = File(...),
-    token_data: dict = Depends(verify_jwt_token),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """Upload and update user profile picture"""
-    user_id = token_data['uuid']
-
     # Find the user
     user = db.query(Users).filter(Users.id == user_id).first()
     if not user:

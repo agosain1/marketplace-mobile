@@ -6,9 +6,15 @@ export function useAuth() {
   const router = useRouter()
   const authStore = useAuthStore()
 
-  // Validate token with backend
+  // Fetch user data from backend
+  const fetchMe = async () => {
+    await authStore.fetchMe()
+    return authStore.isAuthenticated
+  }
+
+  // Validate token (alias for fetchMe for backward compatibility)
   const validateToken = async () => {
-    return await authStore.validateToken()
+    return await fetchMe()
   }
 
   // Require authentication (for protected routes)
@@ -26,14 +32,20 @@ export function useAuth() {
   // Start periodic token validation (every 5 minutes)
   const startTokenValidation = () => {
     // Initial validation
-    validateToken()
+    fetchMe()
 
     // Periodic validation
     setInterval(async () => {
       if (authStore.isAuthenticated) {
-        await validateToken()
+        await fetchMe()
       }
-    }, 5 * 60 * 1000) // 5 minutes = 5 * 60 * 1000
+    }, 5 * 60 * 1000) // 5 minutes
+  }
+
+  // Logout
+  const logout = async () => {
+    await authStore.logout()
+    router.push('/login')
   }
 
   return {
@@ -43,8 +55,10 @@ export function useAuth() {
     isLoading: computed(() => authStore.isLoading),
 
     // Methods
-    validateToken,
+    fetchMe,
+    validateToken, // Keep for backward compatibility
     requireAuth,
-    startTokenValidation
+    startTokenValidation,
+    logout
   }
 }
