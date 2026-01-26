@@ -35,10 +35,6 @@ export default defineRouter(function (/* { store, ssrContext } */) {
 
   // Router guard for authentication
   Router.beforeEach(async (to, from, next) => {
-    // Import the useAuth composable dynamically to avoid circular imports
-    const { useAuth } = await import('../composables/useAuth')
-    const { fetchMe, isAuthenticated } = useAuth()
-
     // Define public routes (no authentication required)
     const publicRoutes = ['/', '/login', '/register']
 
@@ -48,14 +44,23 @@ export default defineRouter(function (/* { store, ssrContext } */) {
                           to.path.startsWith('/verify-email') ||
                           to.path.startsWith('/listing/')
 
-    // Try to fetch user data if not already authenticated
-    // This works for both public and protected routes
+    // If it's a public route, always allow access
+    if (isPublicRoute) {
+      next()
+      return
+    }
+
+    // Import the useAuth composable dynamically to avoid circular imports
+    const { useAuth } = await import('../composables/useAuth')
+    const { fetchMe, isAuthenticated } = useAuth()
+
+    // For protected routes, check authentication
     if (!isAuthenticated.value) {
       // Try to fetch user from HTTP-only cookie
       const isValid = await fetchMe()
 
-      // Only redirect if this is a protected route and auth failed
-      if (!isValid && !isPublicRoute) {
+      if (!isValid) {
+        // Redirect to login if auth failed on protected route
         next({
           path: '/login',
           query: { redirect: to.fullPath }
@@ -64,7 +69,7 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       }
     }
 
-    // If we get here, either route is public or user is authenticated
+    // User is authenticated, allow access to protected route
     next()
   })
 

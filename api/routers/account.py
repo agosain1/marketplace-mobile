@@ -82,7 +82,14 @@ def get_profile(user_id: str = Depends(get_current_user_id), db: Session = Depen
         )
 
     return {
-        "user": user
+        "user": {
+            "id":user.id,
+            "fname":user.fname,
+            "lname":user.lname,
+            "email":user.email,
+            "google_id":user.google_id,
+            "pfp_url":user.pfp_url
+        }
     }
 
 

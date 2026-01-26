@@ -44,9 +44,13 @@ api.interceptors.response.use(
         // Handle 403 Forbidden - refresh token expired/invalid
         if (error.response?.status === 403) {
             // Clear session and redirect to login
-            if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-                await api.get('/auth/clear-session').catch(() => {});
-                window.location.href = '/login';
+            if (typeof window !== 'undefined') {
+                const currentPath = window.location.hash ? window.location.hash.slice(1) : window.location.pathname;
+                if (!currentPath.includes('/login')) {
+                    await api.get('/auth/clear-session').catch(() => {});
+                    // Use hash-based routing
+                    window.location.href = '/#/login';
+                }
             }
             return Promise.reject(error);
         }
@@ -102,7 +106,6 @@ api.interceptors.response.use(
 
 export default defineBoot(({ app }) => {
   // for use inside Vue files (Options API) through this.$axios and this.$api
-
   app.config.globalProperties.$axios = axios
   // ^ ^ ^ this will allow you to use this.$axios (for Vue Options API form)
   //       so you won't necessarily have to import axios in each vue file
