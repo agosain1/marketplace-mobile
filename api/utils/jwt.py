@@ -68,7 +68,7 @@ def issue_new_access_token(db: Session, request: Request, response: Response):
         value=new_access_token,
         httponly=True,
         secure=True,
-        samesite="lax",
+        samesite="none",  # Required for cross-origin requests
         max_age=60 * ACCESS_TOKEN_MINS
     )
 

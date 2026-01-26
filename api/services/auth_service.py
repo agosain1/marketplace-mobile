@@ -202,7 +202,7 @@ def create_and_set_cookie(response: Response, user: Users, db: Session):
         value=access_token_id,
         httponly=True,
         secure=True,
-        samesite="lax",
+        samesite="none",  # Required for cross-origin requests
         max_age=60 * ACCESS_TOKEN_MINS  # variable mins in seconds (default 15)
     )
 
@@ -211,7 +211,7 @@ def create_and_set_cookie(response: Response, user: Users, db: Session):
         value=refresh_token.id,
         httponly=True,
         secure=True,
-        samesite="lax",
+        samesite="none",  # Required for cross-origin requests
         max_age=24 * 60 * 60 * REFRESH_TOKEN_DAYS  # variable days in seconds (default 7)
     )
 
@@ -233,7 +233,7 @@ def delete_auth_cookies(response: Response):
         domain=None,
         secure=True,
         httponly=True,
-        samesite="lax"
+        samesite="none"  # Match the samesite setting used when creating the cookie
     )
 
     response.delete_cookie(
@@ -242,5 +242,5 @@ def delete_auth_cookies(response: Response):
         domain=None,
         secure=True,
         httponly=True,
-        samesite="lax"
+        samesite="none"  # Match the samesite setting used when creating the cookie
     )
