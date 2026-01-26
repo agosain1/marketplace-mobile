@@ -55,10 +55,12 @@ api.interceptors.response.use(
         if (error.response?.status === 401 && !originalRequest._retry) {
             // Don't try to refresh for auth endpoints (login, register, etc.)
             // These endpoints don't require authentication, so 401 means bad credentials
-            if (originalRequest.url?.includes('/auth/login') ||
-                originalRequest.url?.includes('/auth/logout') ||
-                originalRequest.url?.includes('/auth/register') ||
-                originalRequest.url?.includes('/auth/verify-email')) {
+            if (originalRequest.url?.includes('auth/login') ||
+                originalRequest.url?.includes('auth/logout') ||
+                originalRequest.url?.includes('auth/register') ||
+                originalRequest.url?.includes('auth/verify-email') ||
+                originalRequest.url?.includes('auth/forgot-password') ||
+                originalRequest.url?.includes('auth/resend-verification')) {
                 return Promise.reject(error);
             }
 
