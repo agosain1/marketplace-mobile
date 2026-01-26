@@ -41,13 +41,24 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        // If error is 401 and we haven't already tried to refresh
+        // Handle 403 Forbidden - refresh token expired/invalid
+        if (error.response?.status === 403) {
+            // Clear session and redirect to login
+            if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+                await api.get('/auth/clear-session').catch(() => {});
+                window.location.href = '/login';
+            }
+            return Promise.reject(error);
+        }
+
+        // Handle 401 Unauthorized - access token expired
         if (error.response?.status === 401 && !originalRequest._retry) {
-            // Don't try to refresh if this was the refresh, login, logout, or me endpoint
-            if (originalRequest.url?.includes('/auth/refresh') ||
-                originalRequest.url?.includes('/auth/login') ||
-                originalRequest.url?.includes('/auth/logout')) { // ||
-                // originalRequest.url?.includes('/auth/me')) {
+            // Don't try to refresh for auth endpoints (login, register, etc.)
+            // These endpoints don't require authentication, so 401 means bad credentials
+            if (originalRequest.url?.includes('/auth/login') ||
+                originalRequest.url?.includes('/auth/logout') ||
+                originalRequest.url?.includes('/auth/register') ||
+                originalRequest.url?.includes('/auth/verify-email')) {
                 return Promise.reject(error);
             }
 
@@ -66,23 +77,20 @@ api.interceptors.response.use(
             isRefreshing = true;
 
             try {
+                // Attempt to refresh the access token
                 await api.post('/auth/refresh');
 
                 processQueue();
                 isRefreshing = false;
 
+                // Retry the original request with new access token
                 return api(originalRequest);
             } catch (refreshError) {
                 processQueue(refreshError);
                 isRefreshing = false;
 
-                // Clear session cookies before redirecting
-                if (typeof window !== 'undefined') {
-                    await api.get('/auth/clear-session').finally(() => {
-                        window.location.href = '/login';
-                    });
-                }
-
+                // If refresh fails with 403, it will be handled by the 403 handler above
+                // Otherwise, just reject the error
                 return Promise.reject(refreshError);
             }
         }

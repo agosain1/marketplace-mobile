@@ -22,7 +22,7 @@ from services.auth_service import (register_user,
                                    logout_user)
 from sqlalchemy.orm import Session
 from schemas.auth import UserCreate, UserLogin, Email, VerifyEmail, GoogleAuth, User
-from utils.jwt import validate_refresh_token, get_current_user_id, issue_new_access_token
+from utils.jwt import get_current_user_id, issue_new_access_token
 
 router = APIRouter(
     prefix="/auth",
@@ -84,14 +84,16 @@ def resend_verification(email: Email, db: Session = Depends(get_db)):
 @router.get('/me')
 def get_current_user(request: Request, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     """Validate current authentication token"""
-    refresh_token = validate_refresh_token(db, request)
-    if not refresh_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated"
-        )
+    # Only validate access token via get_current_user_id dependency
+    # Don't validate refresh token here - that's only for /auth/refresh
 
     user = db.query(Users).filter(Users.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
     user_info = User(id=user.id,
                      fname=user.fname,
                      lname=user.lname,

@@ -48,20 +48,19 @@ export default defineRouter(function (/* { store, ssrContext } */) {
                           to.path.startsWith('/verify-email') ||
                           to.path.startsWith('/listing/')
 
-    if (!isPublicRoute) {
-      // Check if user is already authenticated
-      if (!isAuthenticated.value) {
-        // Try to fetch user from HTTP-only cookie
-        const isValid = await fetchMe()
+    // Try to fetch user data if not already authenticated
+    // This works for both public and protected routes
+    if (!isAuthenticated.value) {
+      // Try to fetch user from HTTP-only cookie
+      const isValid = await fetchMe()
 
-        if (!isValid) {
-          // Redirect to login with return URL
-          next({
-            path: '/login',
-            query: { redirect: to.fullPath }
-          })
-          return
-        }
+      // Only redirect if this is a protected route and auth failed
+      if (!isValid && !isPublicRoute) {
+        next({
+          path: '/login',
+          query: { redirect: to.fullPath }
+        })
+        return
       }
     }
 
