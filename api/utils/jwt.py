@@ -37,7 +37,7 @@ def validate_refresh_token(db: Session, request: Request):
     refresh_id = request.cookies.get("refresh_token")
     if not refresh_id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid or expired refresh token"
         )
 
@@ -45,14 +45,14 @@ def validate_refresh_token(db: Session, request: Request):
 
     if not token or token.revoked:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid or expired refresh token"
         )
 
     expires_at_utc = token.expires_at.replace(tzinfo=datetime.UTC)
     if expires_at_utc < datetime.datetime.now(datetime.UTC):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid or expired refresh token"
         )
 
